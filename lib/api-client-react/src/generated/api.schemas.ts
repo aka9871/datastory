@@ -98,4 +98,36 @@ export interface OverviewStats {
   activeClients: number;
   totalDashboards: number;
   activeDashboards: number;
+  totalUsers: number;
+}
+
+export interface AppUser {
+  id: string;
+  email: string;
+  /** @nullable */
+  firstName?: string | null;
+  /** @nullable */
+  lastName?: string | null;
+  createdAt: number;
+  assignedClientIds: number[];
+}
+
+export interface CreateUserBody {
+  email: string;
+  password: string;
+  /** @nullable */
+  firstName?: string | null;
+  /** @nullable */
+  lastName?: string | null;
+}
+
+export interface UserClientAssignment {
+  id: number;
+  clerkUserId: string;
+  clientId: number;
+  createdAt: string;
+}
+
+export interface AssignClientBody {
+  clientId: number;
 }

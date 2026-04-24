@@ -10,15 +10,15 @@ export default function Home() {
         </div>
         <div className="flex items-center gap-4">
           <Link href="/sign-in">
-            <Button variant="ghost" className="font-medium">Sign In</Button>
-          </Link>
-          <Link href="/sign-up">
-            <Button className="font-medium">Get Started</Button>
+            <Button className="font-medium">Sign In</Button>
           </Link>
         </div>
       </header>
 
       <main className="flex-1 flex flex-col items-center justify-center text-center px-4 max-w-4xl mx-auto">
+        <p className="text-xs font-semibold tracking-[0.2em] text-primary uppercase mb-6">
+          BBDO Paris · Client Portal
+        </p>
         <h1 className="text-5xl md:text-7xl font-serif font-bold tracking-tight mb-6">
           Intelligence meets intuition.
         </h1>

@@ -6,11 +6,15 @@
  * OpenAPI spec version: 0.1.0
  */
 
+export * from "./appUser";
+export * from "./assignClientBody";
 export * from "./client";
 export * from "./createClientBody";
 export * from "./createDashboardBody";
+export * from "./createUserBody";
 export * from "./dashboard";
 export * from "./healthStatus";
 export * from "./overviewStats";
 export * from "./updateClientBody";
 export * from "./updateDashboardBody";
+export * from "./userClientAssignment";

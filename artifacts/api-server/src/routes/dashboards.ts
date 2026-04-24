@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
-import { eq } from "drizzle-orm";
-import { db, dashboardsTable } from "@workspace/db";
+import { eq, inArray } from "drizzle-orm";
+import { db, dashboardsTable, userClientsTable } from "@workspace/db";
 import {
   CreateDashboardBody,
   UpdateDashboardBody,
@@ -9,6 +9,7 @@ import {
   DeleteDashboardParams,
   ListClientDashboardsParams,
 } from "@workspace/api-zod";
+import { getAuth } from "@clerk/express";
 
 const router: IRouter = Router();
 
@@ -34,6 +35,31 @@ router.get("/clients/:clientId/dashboards", async (req, res): Promise<void> => {
     .select()
     .from(dashboardsTable)
     .where(eq(dashboardsTable.clientId, params.data.clientId))
+    .orderBy(dashboardsTable.order);
+  res.json(serializeDates(dashboards));
+});
+
+router.get("/dashboards/my", async (req, res): Promise<void> => {
+  const { userId } = getAuth(req);
+  if (!userId) {
+    res.status(401).json({ error: "Unauthorized" });
+    return;
+  }
+  const assignments = await db
+    .select()
+    .from(userClientsTable)
+    .where(eq(userClientsTable.clerkUserId, userId));
+
+  if (assignments.length === 0) {
+    res.json([]);
+    return;
+  }
+
+  const clientIds = assignments.map((a) => a.clientId);
+  const dashboards = await db
+    .select()
+    .from(dashboardsTable)
+    .where(inArray(dashboardsTable.clientId, clientIds))
     .orderBy(dashboardsTable.order);
   res.json(serializeDates(dashboards));
 });

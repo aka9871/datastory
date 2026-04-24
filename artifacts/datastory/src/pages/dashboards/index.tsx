@@ -1,5 +1,5 @@
 import { AppLayout } from "@/components/layout";
-import { useListDashboards, useListClients } from "@workspace/api-client-react";
+import { useGetMyDashboards, useListClients } from "@workspace/api-client-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Link } from "wouter";
@@ -7,7 +7,7 @@ import { BarChart3, ExternalLink } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 
 export default function Dashboards() {
-  const { data: dashboards, isLoading: isLoadingDashboards } = useListDashboards();
+  const { data: dashboards, isLoading: isLoadingDashboards } = useGetMyDashboards();
   const { data: clients, isLoading: isLoadingClients } = useListClients();
 
   const isLoading = isLoadingDashboards || isLoadingClients;
@@ -44,7 +44,9 @@ export default function Dashboards() {
           <div className="text-center py-20 border border-dashed border-border bg-card/50">
             <BarChart3 className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
             <h3 className="text-lg font-medium mb-1">No dashboards available</h3>
-            <p className="text-muted-foreground">You don't have access to any dashboards yet.</p>
+            <p className="text-muted-foreground">
+              Your account has not been assigned to any client dashboards yet. Contact your BBDO Paris administrator.
+            </p>
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -70,9 +72,9 @@ export default function Dashboards() {
                     <CardContent className="mt-auto pt-4">
                       {dashboard.thumbnailUrl ? (
                         <div className="aspect-video w-full overflow-hidden bg-muted mb-4 relative">
-                          <img 
-                            src={dashboard.thumbnailUrl} 
-                            alt={dashboard.title} 
+                          <img
+                            src={dashboard.thumbnailUrl}
+                            alt={dashboard.title}
                             className="object-cover w-full h-full group-hover:scale-105 transition-transform duration-500 grayscale group-hover:grayscale-0"
                           />
                         </div>

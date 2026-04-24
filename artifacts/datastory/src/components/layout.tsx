@@ -1,7 +1,7 @@
 import { Link, useLocation } from "wouter";
 import { useUser, useClerk } from "@clerk/react";
 import { Button } from "@/components/ui/button";
-import { LayoutDashboard, Users, BarChart3, LogOut, Settings } from "lucide-react";
+import { LayoutDashboard, Users, BarChart3, LogOut } from "lucide-react";
 
 export function AppLayout({ children }: { children: React.ReactNode }) {
   const { user } = useUser();
@@ -48,7 +48,8 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
 
   const navItems = [
     { href: "/admin", label: "Overview", icon: BarChart3 },
-    { href: "/admin/clients", label: "Clients", icon: Users },
+    { href: "/admin/users", label: "Users", icon: Users },
+    { href: "/admin/clients", label: "Clients", icon: LayoutDashboard },
     { href: "/admin/dashboards", label: "All Dashboards", icon: LayoutDashboard },
   ];
 

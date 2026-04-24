@@ -11,4 +11,5 @@ export interface OverviewStats {
   activeClients: number;
   totalDashboards: number;
   activeDashboards: number;
+  totalUsers: number;
 }

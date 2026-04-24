@@ -1,5 +1,6 @@
 import { Router, type IRouter } from "express";
 import { eq, count } from "drizzle-orm";
+import { createClerkClient } from "@clerk/express";
 import { db, clientsTable, dashboardsTable } from "@workspace/db";
 import {
   CreateClientBody,
@@ -9,6 +10,7 @@ import {
   DeleteClientParams,
 } from "@workspace/api-zod";
 
+const clerk = createClerkClient({ secretKey: process.env.CLERK_SECRET_KEY });
 const router: IRouter = Router();
 
 function serializeDates<T>(obj: T): T {
@@ -95,11 +97,18 @@ router.get("/stats/overview", async (_req, res): Promise<void> => {
   const [totalDashboards] = await db.select({ count: count() }).from(dashboardsTable);
   const [activeDashboards] = await db.select({ count: count() }).from(dashboardsTable).where(eq(dashboardsTable.active, true));
 
+  let totalUsers = 0;
+  try {
+    const { totalCount } = await clerk.users.getCount();
+    totalUsers = totalCount;
+  } catch (_) {}
+
   res.json({
     totalClients: Number(totalClients?.count ?? 0),
     activeClients: Number(activeClients?.count ?? 0),
     totalDashboards: Number(totalDashboards?.count ?? 0),
     activeDashboards: Number(activeDashboards?.count ?? 0),
+    totalUsers,
   });
 });
 

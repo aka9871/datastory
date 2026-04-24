@@ -17,14 +17,18 @@ import type {
 } from "@tanstack/react-query";
 
 import type {
+  AppUser,
+  AssignClientBody,
   Client,
   CreateClientBody,
   CreateDashboardBody,
+  CreateUserBody,
   Dashboard,
   HealthStatus,
   OverviewStats,
   UpdateClientBody,
   UpdateDashboardBody,
+  UserClientAssignment,
 } from "./api.schemas";
 
 import { customFetch } from "../custom-fetch";
@@ -37,7 +41,6 @@ type Awaited<O> = O extends AwaitedInput<infer T> ? T : never;
 type SecondParameter<T extends (...args: never) => unknown> = Parameters<T>[1];
 
 /**
- * Returns server health status
  * @summary Health check
  */
 export const getHealthCheckUrl = () => {
@@ -778,6 +781,81 @@ export const useCreateDashboard = <
 };
 
 /**
+ * @summary Get dashboards for the current authenticated user
+ */
+export const getGetMyDashboardsUrl = () => {
+  return `/api/dashboards/my`;
+};
+
+export const getMyDashboards = async (
+  options?: RequestInit,
+): Promise<Dashboard[]> => {
+  return customFetch<Dashboard[]>(getGetMyDashboardsUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetMyDashboardsQueryKey = () => {
+  return [`/api/dashboards/my`] as const;
+};
+
+export const getGetMyDashboardsQueryOptions = <
+  TData = Awaited<ReturnType<typeof getMyDashboards>>,
+  TError = ErrorType<void>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getMyDashboards>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getGetMyDashboardsQueryKey();
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof getMyDashboards>>> = ({
+    signal,
+  }) => getMyDashboards({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof getMyDashboards>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetMyDashboardsQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getMyDashboards>>
+>;
+export type GetMyDashboardsQueryError = ErrorType<void>;
+
+/**
+ * @summary Get dashboards for the current authenticated user
+ */
+
+export function useGetMyDashboards<
+  TData = Awaited<ReturnType<typeof getMyDashboards>>,
+  TError = ErrorType<void>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getMyDashboards>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetMyDashboardsQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
  * @summary Get a dashboard by ID
  */
 export const getGetDashboardUrl = (id: number) => {
@@ -1109,3 +1187,500 @@ export function useGetOverviewStats<
 
   return { ...query, queryKey: queryOptions.queryKey };
 }
+
+/**
+ * @summary List all Clerk users
+ */
+export const getListUsersUrl = () => {
+  return `/api/admin/users`;
+};
+
+export const listUsers = async (options?: RequestInit): Promise<AppUser[]> => {
+  return customFetch<AppUser[]>(getListUsersUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getListUsersQueryKey = () => {
+  return [`/api/admin/users`] as const;
+};
+
+export const getListUsersQueryOptions = <
+  TData = Awaited<ReturnType<typeof listUsers>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<Awaited<ReturnType<typeof listUsers>>, TError, TData>;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getListUsersQueryKey();
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof listUsers>>> = ({
+    signal,
+  }) => listUsers({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof listUsers>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type ListUsersQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listUsers>>
+>;
+export type ListUsersQueryError = ErrorType<unknown>;
+
+/**
+ * @summary List all Clerk users
+ */
+
+export function useListUsers<
+  TData = Awaited<ReturnType<typeof listUsers>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<Awaited<ReturnType<typeof listUsers>>, TError, TData>;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getListUsersQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Create a new user
+ */
+export const getCreateUserUrl = () => {
+  return `/api/admin/users`;
+};
+
+export const createUser = async (
+  createUserBody: CreateUserBody,
+  options?: RequestInit,
+): Promise<AppUser> => {
+  return customFetch<AppUser>(getCreateUserUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(createUserBody),
+  });
+};
+
+export const getCreateUserMutationOptions = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createUser>>,
+    TError,
+    { data: BodyType<CreateUserBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof createUser>>,
+  TError,
+  { data: BodyType<CreateUserBody> },
+  TContext
+> => {
+  const mutationKey = ["createUser"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof createUser>>,
+    { data: BodyType<CreateUserBody> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return createUser(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type CreateUserMutationResult = NonNullable<
+  Awaited<ReturnType<typeof createUser>>
+>;
+export type CreateUserMutationBody = BodyType<CreateUserBody>;
+export type CreateUserMutationError = ErrorType<void>;
+
+/**
+ * @summary Create a new user
+ */
+export const useCreateUser = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createUser>>,
+    TError,
+    { data: BodyType<CreateUserBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof createUser>>,
+  TError,
+  { data: BodyType<CreateUserBody> },
+  TContext
+> => {
+  return useMutation(getCreateUserMutationOptions(options));
+};
+
+/**
+ * @summary Delete a user
+ */
+export const getDeleteUserUrl = (userId: string) => {
+  return `/api/admin/users/${userId}`;
+};
+
+export const deleteUser = async (
+  userId: string,
+  options?: RequestInit,
+): Promise<void> => {
+  return customFetch<void>(getDeleteUserUrl(userId), {
+    ...options,
+    method: "DELETE",
+  });
+};
+
+export const getDeleteUserMutationOptions = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteUser>>,
+    TError,
+    { userId: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof deleteUser>>,
+  TError,
+  { userId: string },
+  TContext
+> => {
+  const mutationKey = ["deleteUser"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof deleteUser>>,
+    { userId: string }
+  > = (props) => {
+    const { userId } = props ?? {};
+
+    return deleteUser(userId, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type DeleteUserMutationResult = NonNullable<
+  Awaited<ReturnType<typeof deleteUser>>
+>;
+
+export type DeleteUserMutationError = ErrorType<void>;
+
+/**
+ * @summary Delete a user
+ */
+export const useDeleteUser = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteUser>>,
+    TError,
+    { userId: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof deleteUser>>,
+  TError,
+  { userId: string },
+  TContext
+> => {
+  return useMutation(getDeleteUserMutationOptions(options));
+};
+
+/**
+ * @summary Get assigned clients for a user
+ */
+export const getGetUserClientsUrl = (userId: string) => {
+  return `/api/admin/users/${userId}/clients`;
+};
+
+export const getUserClients = async (
+  userId: string,
+  options?: RequestInit,
+): Promise<UserClientAssignment[]> => {
+  return customFetch<UserClientAssignment[]>(getGetUserClientsUrl(userId), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetUserClientsQueryKey = (userId: string) => {
+  return [`/api/admin/users/${userId}/clients`] as const;
+};
+
+export const getGetUserClientsQueryOptions = <
+  TData = Awaited<ReturnType<typeof getUserClients>>,
+  TError = ErrorType<unknown>,
+>(
+  userId: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getUserClients>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getGetUserClientsQueryKey(userId);
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof getUserClients>>> = ({
+    signal,
+  }) => getUserClients(userId, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!userId,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof getUserClients>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetUserClientsQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getUserClients>>
+>;
+export type GetUserClientsQueryError = ErrorType<unknown>;
+
+/**
+ * @summary Get assigned clients for a user
+ */
+
+export function useGetUserClients<
+  TData = Awaited<ReturnType<typeof getUserClients>>,
+  TError = ErrorType<unknown>,
+>(
+  userId: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getUserClients>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetUserClientsQueryOptions(userId, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Assign a client to a user
+ */
+export const getAssignClientToUserUrl = (userId: string) => {
+  return `/api/admin/users/${userId}/clients`;
+};
+
+export const assignClientToUser = async (
+  userId: string,
+  assignClientBody: AssignClientBody,
+  options?: RequestInit,
+): Promise<UserClientAssignment> => {
+  return customFetch<UserClientAssignment>(getAssignClientToUserUrl(userId), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(assignClientBody),
+  });
+};
+
+export const getAssignClientToUserMutationOptions = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof assignClientToUser>>,
+    TError,
+    { userId: string; data: BodyType<AssignClientBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof assignClientToUser>>,
+  TError,
+  { userId: string; data: BodyType<AssignClientBody> },
+  TContext
+> => {
+  const mutationKey = ["assignClientToUser"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof assignClientToUser>>,
+    { userId: string; data: BodyType<AssignClientBody> }
+  > = (props) => {
+    const { userId, data } = props ?? {};
+
+    return assignClientToUser(userId, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type AssignClientToUserMutationResult = NonNullable<
+  Awaited<ReturnType<typeof assignClientToUser>>
+>;
+export type AssignClientToUserMutationBody = BodyType<AssignClientBody>;
+export type AssignClientToUserMutationError = ErrorType<void>;
+
+/**
+ * @summary Assign a client to a user
+ */
+export const useAssignClientToUser = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof assignClientToUser>>,
+    TError,
+    { userId: string; data: BodyType<AssignClientBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof assignClientToUser>>,
+  TError,
+  { userId: string; data: BodyType<AssignClientBody> },
+  TContext
+> => {
+  return useMutation(getAssignClientToUserMutationOptions(options));
+};
+
+/**
+ * @summary Remove client assignment from a user
+ */
+export const getRemoveClientFromUserUrl = (
+  userId: string,
+  clientId: number,
+) => {
+  return `/api/admin/users/${userId}/clients/${clientId}`;
+};
+
+export const removeClientFromUser = async (
+  userId: string,
+  clientId: number,
+  options?: RequestInit,
+): Promise<void> => {
+  return customFetch<void>(getRemoveClientFromUserUrl(userId, clientId), {
+    ...options,
+    method: "DELETE",
+  });
+};
+
+export const getRemoveClientFromUserMutationOptions = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof removeClientFromUser>>,
+    TError,
+    { userId: string; clientId: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof removeClientFromUser>>,
+  TError,
+  { userId: string; clientId: number },
+  TContext
+> => {
+  const mutationKey = ["removeClientFromUser"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof removeClientFromUser>>,
+    { userId: string; clientId: number }
+  > = (props) => {
+    const { userId, clientId } = props ?? {};
+
+    return removeClientFromUser(userId, clientId, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type RemoveClientFromUserMutationResult = NonNullable<
+  Awaited<ReturnType<typeof removeClientFromUser>>
+>;
+
+export type RemoveClientFromUserMutationError = ErrorType<void>;
+
+/**
+ * @summary Remove client assignment from a user
+ */
+export const useRemoveClientFromUser = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof removeClientFromUser>>,
+    TError,
+    { userId: string; clientId: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof removeClientFromUser>>,
+  TError,
+  { userId: string; clientId: number },
+  TContext
+> => {
+  return useMutation(getRemoveClientFromUserMutationOptions(options));
+};

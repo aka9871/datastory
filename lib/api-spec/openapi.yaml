@@ -14,13 +14,14 @@ tags:
     description: Client management
   - name: dashboards
     description: Dashboard management
+  - name: users
+    description: User management
 paths:
   /healthz:
     get:
       operationId: healthCheck
       tags: [health]
       summary: Health check
-      description: Returns server health status
       responses:
         "200":
           description: Healthy
@@ -179,6 +180,23 @@ paths:
         "400":
           description: Invalid request
 
+  /dashboards/my:
+    get:
+      operationId: getMyDashboards
+      tags: [dashboards]
+      summary: Get dashboards for the current authenticated user
+      responses:
+        "200":
+          description: Dashboards for current user
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Dashboard"
+        "401":
+          description: Unauthorized
+
   /dashboards/{id}:
     get:
       operationId: getDashboard
@@ -252,6 +270,125 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/OverviewStats"
+
+  /admin/users:
+    get:
+      operationId: listUsers
+      tags: [users]
+      summary: List all Clerk users
+      responses:
+        "200":
+          description: List of users
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/AppUser"
+    post:
+      operationId: createUser
+      tags: [users]
+      summary: Create a new user
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateUserBody"
+      responses:
+        "201":
+          description: Created user
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AppUser"
+        "400":
+          description: Invalid request
+
+  /admin/users/{userId}:
+    delete:
+      operationId: deleteUser
+      tags: [users]
+      summary: Delete a user
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "204":
+          description: Deleted
+        "404":
+          description: Not found
+
+  /admin/users/{userId}/clients:
+    get:
+      operationId: getUserClients
+      tags: [users]
+      summary: Get assigned clients for a user
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Assigned clients
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/UserClientAssignment"
+    post:
+      operationId: assignClientToUser
+      tags: [users]
+      summary: Assign a client to a user
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AssignClientBody"
+      responses:
+        "201":
+          description: Assignment created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserClientAssignment"
+        "400":
+          description: Invalid request
+
+  /admin/users/{userId}/clients/{clientId}:
+    delete:
+      operationId: removeClientFromUser
+      tags: [users]
+      summary: Remove client assignment from a user
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: clientId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Removed
+        "404":
+          description: Not found
 
 components:
   schemas:
@@ -417,8 +554,74 @@ components:
           type: integer
         activeDashboards:
           type: integer
+        totalUsers:
+          type: integer
       required:
         - totalClients
         - activeClients
         - totalDashboards
         - activeDashboards
+        - totalUsers
+
+    AppUser:
+      type: object
+      properties:
+        id:
+          type: string
+        email:
+          type: string
+        firstName:
+          type: ["string", "null"]
+        lastName:
+          type: ["string", "null"]
+        createdAt:
+          type: integer
+        assignedClientIds:
+          type: array
+          items:
+            type: integer
+      required:
+        - id
+        - email
+        - createdAt
+        - assignedClientIds
+
+    CreateUserBody:
+      type: object
+      properties:
+        email:
+          type: string
+        password:
+          type: string
+        firstName:
+          type: ["string", "null"]
+        lastName:
+          type: ["string", "null"]
+      required:
+        - email
+        - password
+
+    UserClientAssignment:
+      type: object
+      properties:
+        id:
+          type: integer
+        clerkUserId:
+          type: string
+        clientId:
+          type: integer
+        createdAt:
+          type: string
+      required:
+        - id
+        - clerkUserId
+        - clientId
+        - createdAt
+
+    AssignClientBody:
+      type: object
+      properties:
+        clientId:
+          type: integer
+      required:
+        - clientId

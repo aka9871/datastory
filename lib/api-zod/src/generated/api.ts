@@ -8,7 +8,6 @@
 import * as zod from "zod";
 
 /**
- * Returns server health status
  * @summary Health check
  */
 export const HealthCheckResponse = zod.object({
@@ -154,6 +153,24 @@ export const CreateDashboardBody = zod.object({
 });
 
 /**
+ * @summary Get dashboards for the current authenticated user
+ */
+export const GetMyDashboardsResponseItem = zod.object({
+  id: zod.number(),
+  clientId: zod.number(),
+  title: zod.string(),
+  description: zod.string().nullish(),
+  lookerstudioUrl: zod.string(),
+  thumbnailUrl: zod.string().nullish(),
+  category: zod.string().nullish(),
+  order: zod.number(),
+  active: zod.boolean(),
+  createdAt: zod.string(),
+  updatedAt: zod.string(),
+});
+export const GetMyDashboardsResponse = zod.array(GetMyDashboardsResponseItem);
+
+/**
  * @summary Get a dashboard by ID
  */
 export const GetDashboardParams = zod.object({
@@ -221,4 +238,69 @@ export const GetOverviewStatsResponse = zod.object({
   activeClients: zod.number(),
   totalDashboards: zod.number(),
   activeDashboards: zod.number(),
+  totalUsers: zod.number(),
+});
+
+/**
+ * @summary List all Clerk users
+ */
+export const ListUsersResponseItem = zod.object({
+  id: zod.string(),
+  email: zod.string(),
+  firstName: zod.string().nullish(),
+  lastName: zod.string().nullish(),
+  createdAt: zod.number(),
+  assignedClientIds: zod.array(zod.number()),
+});
+export const ListUsersResponse = zod.array(ListUsersResponseItem);
+
+/**
+ * @summary Create a new user
+ */
+export const CreateUserBody = zod.object({
+  email: zod.string(),
+  password: zod.string(),
+  firstName: zod.string().nullish(),
+  lastName: zod.string().nullish(),
+});
+
+/**
+ * @summary Delete a user
+ */
+export const DeleteUserParams = zod.object({
+  userId: zod.coerce.string(),
+});
+
+/**
+ * @summary Get assigned clients for a user
+ */
+export const GetUserClientsParams = zod.object({
+  userId: zod.coerce.string(),
+});
+
+export const GetUserClientsResponseItem = zod.object({
+  id: zod.number(),
+  clerkUserId: zod.string(),
+  clientId: zod.number(),
+  createdAt: zod.string(),
+});
+export const GetUserClientsResponse = zod.array(GetUserClientsResponseItem);
+
+/**
+ * @summary Assign a client to a user
+ */
+export const AssignClientToUserParams = zod.object({
+  userId: zod.coerce.string(),
+});
+
+export const AssignClientToUserBody = zod.object({
+  clientId: zod.number(),
+});
+
+/**
+ * @summary Remove client assignment from a user
+ */
+export const RemoveClientFromUserParams = zod.object({
+  userId: zod.coerce.string(),
+  clientId: zod.coerce.number(),
 });

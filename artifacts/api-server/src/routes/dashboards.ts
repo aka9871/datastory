@@ -176,14 +176,16 @@ router.put("/dashboards/:id", requireAuth, requireRole("admin", "brand_admin"), 
     return;
   }
 
-  const { name, lookerUrl, active } = req.body as {
+  const { name, companyId: newCompanyId, lookerUrl, active } = req.body as {
     name?: string;
+    companyId?: string;
     lookerUrl?: string;
     active?: boolean;
   };
 
   const updates: Record<string, unknown> = {};
   if (name !== undefined) updates["name"] = name;
+  if (newCompanyId !== undefined) updates["companyId"] = newCompanyId;
   if (lookerUrl !== undefined) updates["lookerUrl"] = lookerUrl;
   if (active !== undefined) updates["active"] = active;
 

@@ -8,7 +8,7 @@ import {
   useDeleteDashboard,
   getListDashboardsQueryKey,
 } from "@workspace/api-client-react";
-import type { Dashboard } from "@workspace/api-client-react";
+import type { Dashboard, Company } from "@workspace/api-client-react";
 import { Button } from "@/components/ui/button";
 import {
   Table,
@@ -36,10 +36,11 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useQueryClient } from "@tanstack/react-query";
-import { Pencil, Trash2, Plus, Loader2, ExternalLink } from "lucide-react";
+import { Pencil, Trash2, Plus, Loader2, Eye } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Link } from "wouter";
 
 type FormState = {
   name: string;
@@ -55,9 +56,75 @@ const emptyForm: FormState = {
   active: true,
 };
 
+type DashboardFormProps = {
+  formData: FormState;
+  setFormData: (f: FormState) => void;
+  onSubmit: (e: React.FormEvent) => void;
+  isPending: boolean;
+  isEditing: boolean;
+  companies: Company[] | undefined;
+};
+
+function DashboardForm({ formData, setFormData, onSubmit, isPending, isEditing, companies }: DashboardFormProps) {
+  return (
+    <form onSubmit={onSubmit} className="space-y-4">
+      <div className="space-y-2">
+        <Label>Nom</Label>
+        <Input
+          value={formData.name}
+          onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+          required
+          className="rounded-none"
+        />
+      </div>
+      <div className="space-y-2">
+        <Label>Entreprise</Label>
+        <Select
+          value={formData.companyId}
+          onValueChange={(v) => setFormData({ ...formData, companyId: v })}
+        >
+          <SelectTrigger className="rounded-none">
+            <SelectValue placeholder="Sélectionner une entreprise" />
+          </SelectTrigger>
+          <SelectContent>
+            {companies?.map((c) => (
+              <SelectItem key={c.id} value={c.id}>
+                {c.name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+      <div className="space-y-2">
+        <Label>URL Looker Studio</Label>
+        <Input
+          value={formData.lookerUrl}
+          onChange={(e) => setFormData({ ...formData, lookerUrl: e.target.value })}
+          placeholder="https://lookerstudio.google.com/embed/..."
+          required
+          className="rounded-none"
+        />
+      </div>
+      <div className="flex items-center gap-3">
+        <Switch
+          checked={formData.active}
+          onCheckedChange={(v) => setFormData({ ...formData, active: v })}
+          id="active"
+        />
+        <Label htmlFor="active">Actif</Label>
+      </div>
+      <DialogFooter>
+        <Button type="submit" disabled={isPending} className="rounded-none">
+          {isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+          {isEditing ? "Mettre à jour" : "Créer"}
+        </Button>
+      </DialogFooter>
+    </form>
+  );
+}
+
 export default function AdminDashboards() {
-  const { data: dashboards, isLoading: isLoadingDashboards } =
-    useListDashboards();
+  const { data: dashboards, isLoading: isLoadingDashboards } = useListDashboards();
   const { data: companies, isLoading: isLoadingCompanies } = useListCompanies();
   const isLoading = isLoadingDashboards || isLoadingCompanies;
 
@@ -69,9 +136,7 @@ export default function AdminDashboards() {
   const deleteDashboard = useDeleteDashboard();
 
   const [isCreateOpen, setIsCreateOpen] = useState(false);
-  const [editingDashboard, setEditingDashboard] = useState<Dashboard | null>(
-    null,
-  );
+  const [editingDashboard, setEditingDashboard] = useState<Dashboard | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<Dashboard | null>(null);
   const [formData, setFormData] = useState<FormState>(emptyForm);
 
@@ -125,6 +190,7 @@ export default function AdminDashboards() {
         id: editingDashboard.id,
         data: {
           name: formData.name,
+          companyId: formData.companyId,
           lookerUrl: formData.lookerUrl,
           active: formData.active,
         },
@@ -157,70 +223,6 @@ export default function AdminDashboards() {
     );
   }
 
-  const DashboardForm = ({
-    onSubmit,
-    isPending,
-  }: {
-    onSubmit: (e: React.FormEvent) => void;
-    isPending: boolean;
-  }) => (
-    <form onSubmit={onSubmit} className="space-y-4">
-      <div className="space-y-2">
-        <Label>Nom</Label>
-        <Input
-          value={formData.name}
-          onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-          required
-          className="rounded-none"
-        />
-      </div>
-      {!editingDashboard && (
-        <div className="space-y-2">
-          <Label>Entreprise</Label>
-          <Select
-            value={formData.companyId}
-            onValueChange={(v) => setFormData({ ...formData, companyId: v })}
-          >
-            <SelectTrigger className="rounded-none">
-              <SelectValue placeholder="Sélectionner une entreprise" />
-            </SelectTrigger>
-            <SelectContent>
-              {companies?.map((c) => (
-                <SelectItem key={c.id} value={c.id}>
-                  {c.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-      )}
-      <div className="space-y-2">
-        <Label>URL Looker Studio</Label>
-        <Input
-          value={formData.lookerUrl}
-          onChange={(e) => setFormData({ ...formData, lookerUrl: e.target.value })}
-          placeholder="https://lookerstudio.google.com/embed/..."
-          required
-          className="rounded-none"
-        />
-      </div>
-      <div className="flex items-center gap-3">
-        <Switch
-          checked={formData.active}
-          onCheckedChange={(v) => setFormData({ ...formData, active: v })}
-          id="active"
-        />
-        <Label htmlFor="active">Actif</Label>
-      </div>
-      <DialogFooter>
-        <Button type="submit" disabled={isPending} className="rounded-none">
-          {isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-          {editingDashboard ? "Mettre à jour" : "Créer"}
-        </Button>
-      </DialogFooter>
-    </form>
-  );
-
   return (
     <AdminLayout>
       <div className="mb-8 flex justify-between items-end">
@@ -251,7 +253,7 @@ export default function AdminDashboards() {
               <TableRow className="border-border">
                 <TableHead>Nom</TableHead>
                 <TableHead>Entreprise</TableHead>
-                <TableHead>URL</TableHead>
+                <TableHead>Aperçu</TableHead>
                 <TableHead>Statut</TableHead>
                 <TableHead className="w-24" />
               </TableRow>
@@ -259,37 +261,26 @@ export default function AdminDashboards() {
             <TableBody>
               {dashboards?.length === 0 ? (
                 <TableRow>
-                  <TableCell
-                    colSpan={5}
-                    className="text-center text-muted-foreground py-8"
-                  >
+                  <TableCell colSpan={5} className="text-center text-muted-foreground py-8">
                     Aucun dashboard
                   </TableCell>
                 </TableRow>
               ) : (
                 dashboards?.map((dashboard) => {
-                  const company = companies?.find(
-                    (c) => c.id === dashboard.companyId,
-                  );
+                  const company = companies?.find((c) => c.id === dashboard.companyId);
                   return (
                     <TableRow key={dashboard.id} className="border-border">
-                      <TableCell className="font-medium">
-                        {dashboard.name}
-                      </TableCell>
+                      <TableCell className="font-medium">{dashboard.name}</TableCell>
                       <TableCell className="text-muted-foreground text-sm">
                         {company?.name ?? "—"}
                       </TableCell>
                       <TableCell>
-                        <a
-                          href={dashboard.lookerUrl}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="flex items-center gap-1 text-xs text-primary hover:underline"
-                          onClick={(e) => e.stopPropagation()}
-                        >
-                          <ExternalLink className="h-3 w-3" />
-                          Ouvrir
-                        </a>
+                        <Link href={`/dashboards/${dashboard.id}`}>
+                          <span className="flex items-center gap-1 text-xs text-primary hover:underline cursor-pointer">
+                            <Eye className="h-3 w-3" />
+                            Voir
+                          </span>
+                        </Link>
                       </TableCell>
                       <TableCell>
                         <Badge
@@ -334,46 +325,43 @@ export default function AdminDashboards() {
             <DialogTitle>Nouveau dashboard</DialogTitle>
           </DialogHeader>
           <DashboardForm
+            formData={formData}
+            setFormData={setFormData}
             onSubmit={handleCreate}
             isPending={createDashboard.isPending}
+            isEditing={false}
+            companies={companies}
           />
         </DialogContent>
       </Dialog>
 
-      <Dialog
-        open={!!editingDashboard}
-        onOpenChange={(o) => !o && setEditingDashboard(null)}
-      >
+      <Dialog open={!!editingDashboard} onOpenChange={(o) => !o && setEditingDashboard(null)}>
         <DialogContent className="rounded-none">
           <DialogHeader>
             <DialogTitle>Modifier le dashboard</DialogTitle>
           </DialogHeader>
           <DashboardForm
+            formData={formData}
+            setFormData={setFormData}
             onSubmit={handleUpdate}
             isPending={updateDashboard.isPending}
+            isEditing={true}
+            companies={companies}
           />
         </DialogContent>
       </Dialog>
 
-      <Dialog
-        open={!!deleteTarget}
-        onOpenChange={(o) => !o && setDeleteTarget(null)}
-      >
+      <Dialog open={!!deleteTarget} onOpenChange={(o) => !o && setDeleteTarget(null)}>
         <DialogContent className="rounded-none">
           <DialogHeader>
             <DialogTitle>Supprimer le dashboard</DialogTitle>
           </DialogHeader>
           <p className="text-muted-foreground">
             Êtes-vous sûr de vouloir supprimer{" "}
-            <strong>{deleteTarget?.name}</strong> ? Cette action est
-            irréversible.
+            <strong>{deleteTarget?.name}</strong> ? Cette action est irréversible.
           </p>
           <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => setDeleteTarget(null)}
-              className="rounded-none"
-            >
+            <Button variant="outline" onClick={() => setDeleteTarget(null)} className="rounded-none">
               Annuler
             </Button>
             <Button
@@ -382,9 +370,7 @@ export default function AdminDashboards() {
               disabled={deleteDashboard.isPending}
               className="rounded-none"
             >
-              {deleteDashboard.isPending && (
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-              )}
+              {deleteDashboard.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
               Supprimer
             </Button>
           </DialogFooter>

@@ -12,11 +12,10 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
     <div className="min-h-screen flex flex-col bg-background">
       <header className="h-16 border-b border-border flex items-center justify-between px-6 bg-card shrink-0">
         <div className="flex items-center gap-8">
-          <Link href="/dashboards" className="flex flex-col items-start leading-none gap-0.5">
+          <Link href="/dashboards">
             <span className="font-serif font-bold text-lg tracking-tight">
               DATA<span className="text-primary">STORY</span>
             </span>
-            <img src={bbdoLogo} alt="BBDO Paris" className="h-3.5 w-auto opacity-70" />
           </Link>
 
           <nav className="hidden md:flex items-center gap-6">
@@ -42,6 +41,10 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
       </header>
 
       <main className="flex-1 overflow-auto">{children}</main>
+
+      <footer className="h-10 border-t border-border flex items-center justify-center px-6 bg-card shrink-0">
+        <img src={bbdoLogo} alt="BBDO Paris" className="h-3.5 w-auto opacity-40" />
+      </footer>
     </div>
   );
 }

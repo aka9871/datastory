@@ -1,10 +1,9 @@
 import { useRoute, Link } from "wouter";
-import { getDashboard, getListCompaniesQueryKey } from "@workspace/api-client-react";
+import { getDashboard } from "@workspace/api-client-react";
 import { useQuery } from "@tanstack/react-query";
 import { ArrowLeft, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useListCompanies } from "@workspace/api-client-react";
-import bbdoLogo from "/bbdo-logo.png";
 
 function getLogoSrc(logoUrl: string | null | undefined): string | null {
   if (!logoUrl) return null;
@@ -78,7 +77,10 @@ export default function DashboardViewer() {
             </div>
           </div>
         </div>
-        <img src={bbdoLogo} alt="BBDO Paris" className="h-5 w-auto opacity-40" />
+
+        <span className="font-serif font-bold text-sm tracking-tight opacity-40">
+          DATA<span className="text-primary">STORY</span>
+        </span>
       </header>
 
       <main className="flex-1 w-full bg-black">

@@ -6,12 +6,9 @@ export default function Home() {
   return (
     <div className="min-h-screen bg-background text-foreground flex flex-col">
       <header className="px-8 py-5 flex items-center justify-between border-b border-border">
-        <div className="flex flex-col items-start leading-none gap-0.5">
-          <span className="font-serif font-bold text-xl tracking-tight">
-            DATA<span className="text-primary">STORY</span>
-          </span>
-          <img src={bbdoLogo} alt="BBDO Paris" className="h-3.5 w-auto opacity-60" />
-        </div>
+        <span className="font-serif font-bold text-xl tracking-tight">
+          DATA<span className="text-primary">STORY</span>
+        </span>
         <div className="flex items-center gap-4">
           <Link href="/login">
             <Button className="font-medium rounded-none">Sign In</Button>
@@ -36,8 +33,11 @@ export default function Home() {
         </Link>
       </main>
 
-      <footer className="py-8 text-center text-sm text-muted-foreground border-t border-border">
-        &copy; {new Date().getFullYear()} BBDO Paris. All rights reserved.
+      <footer className="py-6 flex flex-col items-center gap-3 border-t border-border">
+        <img src={bbdoLogo} alt="BBDO Paris" className="h-4 w-auto opacity-40" />
+        <p className="text-xs text-muted-foreground">
+          &copy; {new Date().getFullYear()} BBDO Paris. All rights reserved.
+        </p>
       </footer>
     </div>
   );

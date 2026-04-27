@@ -1,133 +1,174 @@
 import { Router, type IRouter } from "express";
-import { createClerkClient } from "@clerk/express";
+import { randomUUID } from "crypto";
+import bcrypt from "bcryptjs";
+import { db, userTable } from "@workspace/db";
 import { eq, and } from "drizzle-orm";
-import { db, userClientsTable } from "@workspace/db";
+import { requireAuth, requireRole } from "../middlewares/authMiddleware";
 
-const clerk = createClerkClient({ secretKey: process.env.CLERK_SECRET_KEY });
 const router: IRouter = Router();
 
-function serializeDates<T>(obj: T): T {
-  if (Array.isArray(obj)) return obj.map(serializeDates) as T;
-  if (obj && typeof obj === "object") {
-    const result: Record<string, unknown> = {};
-    for (const [k, v] of Object.entries(obj as Record<string, unknown>)) {
-      result[k] = v instanceof Date ? v.toISOString() : v;
-    }
-    return result as T;
-  }
-  return obj;
+const SALT_ROUNDS = 10;
+
+function sanitizeUser(user: typeof userTable.$inferSelect) {
+  const { password: _pw, ...rest } = user;
+  return rest;
 }
 
-router.get("/admin/users", async (_req, res): Promise<void> => {
-  try {
-    const { data: clerkUsers } = await clerk.users.getUserList({ limit: 200 });
-    const assignments = await db.select().from(userClientsTable);
+router.get("/users", requireAuth, requireRole("admin", "brand_admin"), async (req, res) => {
+  const user = req.user!;
+  const companyId = req.query["companyId"] as string | undefined;
 
-    const users = clerkUsers.map((u) => ({
-      id: u.id,
-      email: u.emailAddresses[0]?.emailAddress ?? "",
-      firstName: u.firstName,
-      lastName: u.lastName,
-      createdAt: u.createdAt,
-      assignedClientIds: assignments
-        .filter((a) => a.clerkUserId === u.id)
-        .map((a) => a.clientId),
-    }));
+  let query = db.select().from(userTable).$dynamic();
 
-    res.json(users);
-  } catch (err) {
-    res.status(500).json({ error: "Failed to list users" });
+  if (user.role === "brand_admin" && user.companyId) {
+    query = query.where(eq(userTable.companyId, user.companyId));
+  } else if (companyId) {
+    query = query.where(eq(userTable.companyId, companyId));
   }
+
+  const users = await query.orderBy(userTable.lastname);
+  res.json(users.map(sanitizeUser));
 });
 
-router.post("/admin/users", async (req, res): Promise<void> => {
-  const { email, password, firstName, lastName } = req.body;
-  if (!email || !password) {
-    res.status(400).json({ error: "email and password are required" });
-    return;
-  }
-  try {
-    const user = await clerk.users.createUser({
-      emailAddress: [email],
-      password,
-      firstName: firstName ?? undefined,
-      lastName: lastName ?? undefined,
-      skipPasswordChecks: false,
-    });
+router.get("/users/:id", requireAuth, requireRole("admin", "brand_admin"), async (req, res) => {
+  const { id } = req.params;
 
-    res.status(201).json({
-      id: user.id,
-      email: user.emailAddresses[0]?.emailAddress ?? email,
-      firstName: user.firstName,
-      lastName: user.lastName,
-      createdAt: user.createdAt,
-      assignedClientIds: [],
-    });
-  } catch (err: any) {
-    const msg = err?.errors?.[0]?.longMessage ?? err?.message ?? "Failed to create user";
-    res.status(400).json({ error: msg });
-  }
-});
-
-router.delete("/admin/users/:userId", async (req, res): Promise<void> => {
-  const { userId } = req.params;
-  try {
-    await clerk.users.deleteUser(userId);
-    await db.delete(userClientsTable).where(eq(userClientsTable.clerkUserId, userId));
-    res.sendStatus(204);
-  } catch (err) {
-    res.status(404).json({ error: "User not found" });
-  }
-});
-
-router.get("/admin/users/:userId/clients", async (req, res): Promise<void> => {
-  const { userId } = req.params;
-  const assignments = await db
+  const [user] = await db
     .select()
-    .from(userClientsTable)
-    .where(eq(userClientsTable.clerkUserId, userId));
-  res.json(serializeDates(assignments));
-});
+    .from(userTable)
+    .where(eq(userTable.id, id))
+    .limit(1);
 
-router.post("/admin/users/:userId/clients", async (req, res): Promise<void> => {
-  const { userId } = req.params;
-  const { clientId } = req.body;
-  if (!clientId) {
-    res.status(400).json({ error: "clientId is required" });
+  if (!user) {
+    res.status(404).json({ error: "Not found" });
     return;
   }
-  try {
-    const [assignment] = await db
-      .insert(userClientsTable)
-      .values({ clerkUserId: userId, clientId: Number(clientId) })
-      .onConflictDoNothing()
-      .returning();
-    if (!assignment) {
-      res.status(400).json({ error: "Assignment already exists" });
+
+  res.json(sanitizeUser(user));
+});
+
+router.post("/users", requireAuth, requireRole("admin", "brand_admin"), async (req, res) => {
+  const currentUser = req.user!;
+  const {
+    email,
+    firstname,
+    lastname,
+    role = "viewer",
+    password,
+    companyId = null,
+    franchiseId = null,
+  } = req.body as {
+    email: string;
+    firstname: string;
+    lastname: string;
+    role?: "admin" | "brand_admin" | "viewer";
+    password?: string;
+    companyId?: string | null;
+    franchiseId?: string | null;
+  };
+
+  if (!email || !firstname || !lastname) {
+    res.status(400).json({ error: "email, firstname, and lastname are required" });
+    return;
+  }
+
+  if (currentUser.role === "brand_admin") {
+    if (role === "admin" || companyId !== currentUser.companyId) {
+      res.status(403).json({ error: "Forbidden" });
       return;
     }
-    res.status(201).json(serializeDates(assignment));
-  } catch (err) {
-    res.status(400).json({ error: "Failed to assign client" });
   }
+
+  const hashedPassword = password
+    ? await bcrypt.hash(password, SALT_ROUNDS)
+    : await bcrypt.hash(randomUUID(), SALT_ROUNDS);
+
+  const id = randomUUID();
+  const [created] = await db
+    .insert(userTable)
+    .values({
+      id,
+      email: email.toLowerCase().trim(),
+      firstname,
+      lastname,
+      role,
+      password: hashedPassword,
+      companyId,
+      franchiseId,
+      isActive: true,
+    })
+    .returning();
+
+  res.status(201).json(sanitizeUser(created));
 });
 
-router.delete("/admin/users/:userId/clients/:clientId", async (req, res): Promise<void> => {
-  const { userId, clientId } = req.params;
-  const [removed] = await db
-    .delete(userClientsTable)
-    .where(
-      and(
-        eq(userClientsTable.clerkUserId, userId),
-        eq(userClientsTable.clientId, Number(clientId)),
-      ),
-    )
-    .returning();
-  if (!removed) {
-    res.status(404).json({ error: "Assignment not found" });
+router.put("/users/:id", requireAuth, requireRole("admin", "brand_admin"), async (req, res) => {
+  const currentUser = req.user!;
+  const { id } = req.params;
+
+  const [existing] = await db
+    .select()
+    .from(userTable)
+    .where(eq(userTable.id, id))
+    .limit(1);
+
+  if (!existing) {
+    res.status(404).json({ error: "Not found" });
     return;
   }
-  res.sendStatus(204);
+
+  if (currentUser.role === "brand_admin" && existing.companyId !== currentUser.companyId) {
+    res.status(403).json({ error: "Forbidden" });
+    return;
+  }
+
+  const { email, firstname, lastname, role, password, companyId, franchiseId, isActive } = req.body as {
+    email?: string;
+    firstname?: string;
+    lastname?: string;
+    role?: "admin" | "brand_admin" | "viewer";
+    password?: string;
+    companyId?: string | null;
+    franchiseId?: string | null;
+    isActive?: boolean;
+  };
+
+  const updates: Record<string, unknown> = {};
+  if (email !== undefined) updates["email"] = email.toLowerCase().trim();
+  if (firstname !== undefined) updates["firstname"] = firstname;
+  if (lastname !== undefined) updates["lastname"] = lastname;
+  if (role !== undefined) {
+    if (currentUser.role === "brand_admin" && role === "admin") {
+      res.status(403).json({ error: "Forbidden" });
+      return;
+    }
+    updates["role"] = role;
+  }
+  if (password !== undefined && password !== "") {
+    updates["password"] = await bcrypt.hash(password, SALT_ROUNDS);
+  }
+  if (companyId !== undefined) updates["companyId"] = companyId;
+  if (franchiseId !== undefined) updates["franchiseId"] = franchiseId;
+  if (isActive !== undefined) updates["isActive"] = isActive;
+
+  if (Object.keys(updates).length === 0) {
+    res.status(400).json({ error: "No fields to update" });
+    return;
+  }
+
+  const [updated] = await db
+    .update(userTable)
+    .set(updates)
+    .where(eq(userTable.id, id))
+    .returning();
+
+  res.json(sanitizeUser(updated));
+});
+
+router.delete("/users/:id", requireAuth, requireRole("admin"), async (req, res) => {
+  const { id } = req.params;
+  await db.delete(userTable).where(eq(userTable.id, id));
+  res.status(204).send();
 });
 
 export default router;

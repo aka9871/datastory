@@ -3,131 +3,181 @@
  * Do not edit manually.
  * Api
  * Datastory API specification
- * OpenAPI spec version: 0.1.0
+ * OpenAPI spec version: 0.2.0
  */
 export interface HealthStatus {
   status: string;
 }
 
-export interface Client {
-  id: number;
+export interface LoginBody {
+  email: string;
+  password: string;
+}
+
+export type AuthUserRole = (typeof AuthUserRole)[keyof typeof AuthUserRole];
+
+export const AuthUserRole = {
+  admin: "admin",
+  brand_admin: "brand_admin",
+  viewer: "viewer",
+} as const;
+
+export interface AuthUser {
+  id: string;
+  email: string;
+  firstname: string;
+  lastname: string;
+  role: AuthUserRole;
+  companyId?: string | null;
+  franchiseId?: string | null;
+}
+
+export interface Company {
+  id: string;
   name: string;
   slug: string;
-  /** @nullable */
+  domain: string;
+  hasFranchise: boolean;
   logoUrl?: string | null;
-  /** @nullable */
-  industry?: string | null;
-  /** @nullable */
-  description?: string | null;
-  active: boolean;
+  fontRegularFilename?: string | null;
+  fontBoldFilename?: string | null;
   createdAt: string;
-  updatedAt: string;
 }
 
-export interface CreateClientBody {
+export interface CreateCompanyBody {
   name: string;
   slug: string;
-  /** @nullable */
+  domain: string;
+  hasFranchise?: boolean;
   logoUrl?: string | null;
-  /** @nullable */
-  industry?: string | null;
-  /** @nullable */
-  description?: string | null;
-  active?: boolean;
 }
 
-export interface UpdateClientBody {
+export interface UpdateCompanyBody {
   name?: string;
   slug?: string;
-  /** @nullable */
+  domain?: string;
+  hasFranchise?: boolean;
   logoUrl?: string | null;
-  /** @nullable */
-  industry?: string | null;
-  /** @nullable */
-  description?: string | null;
-  active?: boolean;
+}
+
+export interface Franchise {
+  id: string;
+  name: string;
+  companyId: string;
+  code: string;
+  address: string;
+  zipcode: string;
+  createdAt: string;
+}
+
+export interface CreateFranchiseBody {
+  name: string;
+  companyId: string;
+  code?: string;
+  address?: string;
+  zipcode?: string;
+}
+
+export interface UpdateFranchiseBody {
+  name?: string;
+  code?: string;
+  address?: string;
+  zipcode?: string;
 }
 
 export interface Dashboard {
-  id: number;
-  clientId: number;
-  title: string;
-  /** @nullable */
-  description?: string | null;
-  lookerstudioUrl: string;
-  /** @nullable */
-  thumbnailUrl?: string | null;
-  /** @nullable */
-  category?: string | null;
-  order: number;
+  id: string;
+  name: string;
+  companyId: string;
+  lookerUrl: string;
   active: boolean;
   createdAt: string;
-  updatedAt: string;
 }
 
 export interface CreateDashboardBody {
-  clientId: number;
-  title: string;
-  /** @nullable */
-  description?: string | null;
-  lookerstudioUrl: string;
-  /** @nullable */
-  thumbnailUrl?: string | null;
-  /** @nullable */
-  category?: string | null;
-  order?: number;
+  name: string;
+  companyId: string;
+  lookerUrl: string;
   active?: boolean;
 }
 
 export interface UpdateDashboardBody {
-  clientId?: number;
-  title?: string;
-  /** @nullable */
-  description?: string | null;
-  lookerstudioUrl?: string;
-  /** @nullable */
-  thumbnailUrl?: string | null;
-  /** @nullable */
-  category?: string | null;
-  order?: number;
+  name?: string;
+  lookerUrl?: string;
   active?: boolean;
 }
 
-export interface OverviewStats {
-  totalClients: number;
-  activeClients: number;
-  totalDashboards: number;
-  activeDashboards: number;
-  totalUsers: number;
+export interface SetDashboardUsersBody {
+  userIds: string[];
 }
 
-export interface AppUser {
+export interface SetDashboardFranchisesBody {
+  franchiseIds: string[];
+}
+
+export type UserRole = (typeof UserRole)[keyof typeof UserRole];
+
+export const UserRole = {
+  admin: "admin",
+  brand_admin: "brand_admin",
+  viewer: "viewer",
+} as const;
+
+export interface User {
   id: string;
   email: string;
-  /** @nullable */
-  firstName?: string | null;
-  /** @nullable */
-  lastName?: string | null;
-  createdAt: number;
-  assignedClientIds: number[];
-}
-
-export interface CreateUserBody {
-  email: string;
-  password: string;
-  /** @nullable */
-  firstName?: string | null;
-  /** @nullable */
-  lastName?: string | null;
-}
-
-export interface UserClientAssignment {
-  id: number;
-  clerkUserId: string;
-  clientId: number;
+  firstname: string;
+  lastname: string;
+  role: UserRole;
+  companyId?: string | null;
+  franchiseId?: string | null;
+  isActive: boolean;
   createdAt: string;
 }
 
-export interface AssignClientBody {
-  clientId: number;
+export type CreateUserBodyRole =
+  (typeof CreateUserBodyRole)[keyof typeof CreateUserBodyRole];
+
+export const CreateUserBodyRole = {
+  admin: "admin",
+  brand_admin: "brand_admin",
+  viewer: "viewer",
+} as const;
+
+export interface CreateUserBody {
+  email: string;
+  firstname: string;
+  lastname: string;
+  role: CreateUserBodyRole;
+  password?: string;
+  companyId?: string | null;
+  franchiseId?: string | null;
 }
+
+export type UpdateUserBodyRole =
+  (typeof UpdateUserBodyRole)[keyof typeof UpdateUserBodyRole];
+
+export const UpdateUserBodyRole = {
+  admin: "admin",
+  brand_admin: "brand_admin",
+  viewer: "viewer",
+} as const;
+
+export interface UpdateUserBody {
+  email?: string;
+  firstname?: string;
+  lastname?: string;
+  role?: UpdateUserBodyRole;
+  password?: string;
+  companyId?: string | null;
+  franchiseId?: string | null;
+  isActive?: boolean;
+}
+
+export type ListFranchisesParams = {
+  companyId?: string;
+};
+
+export type ListUsersParams = {
+  companyId?: string;
+};

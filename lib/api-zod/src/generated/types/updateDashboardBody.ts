@@ -3,19 +3,11 @@
  * Do not edit manually.
  * Api
  * Datastory API specification
- * OpenAPI spec version: 0.1.0
+ * OpenAPI spec version: 0.2.0
  */
 
 export interface UpdateDashboardBody {
-  clientId?: number;
-  title?: string;
-  /** @nullable */
-  description?: string | null;
-  lookerstudioUrl?: string;
-  /** @nullable */
-  thumbnailUrl?: string | null;
-  /** @nullable */
-  category?: string | null;
-  order?: number;
+  name?: string;
+  lookerUrl?: string;
   active?: boolean;
 }

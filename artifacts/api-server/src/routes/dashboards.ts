@@ -1,133 +1,284 @@
 import { Router, type IRouter } from "express";
-import { eq, inArray } from "drizzle-orm";
-import { db, dashboardsTable, userClientsTable } from "@workspace/db";
+import { randomUUID } from "crypto";
 import {
-  CreateDashboardBody,
-  UpdateDashboardBody,
-  GetDashboardParams,
-  UpdateDashboardParams,
-  DeleteDashboardParams,
-  ListClientDashboardsParams,
-} from "@workspace/api-zod";
-import { getAuth } from "@clerk/express";
+  db,
+  dashboardTable,
+  dashboardUserTable,
+  dashboardFranchiseTable,
+} from "@workspace/db";
+import { eq, inArray, and } from "drizzle-orm";
+import { requireAuth, requireRole } from "../middlewares/authMiddleware";
 
 const router: IRouter = Router();
 
-function serializeDates<T>(obj: T): T {
-  if (Array.isArray(obj)) return obj.map(serializeDates) as T;
-  if (obj && typeof obj === "object") {
-    const result: Record<string, unknown> = {};
-    for (const [k, v] of Object.entries(obj as Record<string, unknown>)) {
-      result[k] = v instanceof Date ? v.toISOString() : v;
+router.get("/dashboards", requireAuth, async (req, res) => {
+  const user = req.user!;
+
+  if (user.role === "admin") {
+    const dashboards = await db.select().from(dashboardTable).orderBy(dashboardTable.name);
+    res.json(dashboards);
+    return;
+  }
+
+  if (user.role === "brand_admin" && user.companyId) {
+    const dashboards = await db
+      .select()
+      .from(dashboardTable)
+      .where(eq(dashboardTable.companyId, user.companyId))
+      .orderBy(dashboardTable.name);
+    res.json(dashboards);
+    return;
+  }
+
+  const dashboardIds = new Set<string>();
+
+  const directAssignments = await db
+    .select({ dashboardId: dashboardUserTable.dashboardId })
+    .from(dashboardUserTable)
+    .where(eq(dashboardUserTable.userId, user.id));
+
+  for (const { dashboardId } of directAssignments) {
+    dashboardIds.add(dashboardId);
+  }
+
+  if (user.franchiseId) {
+    const franchiseAssignments = await db
+      .select({ dashboardId: dashboardFranchiseTable.dashboardId })
+      .from(dashboardFranchiseTable)
+      .where(eq(dashboardFranchiseTable.franchiseId, user.franchiseId));
+
+    for (const { dashboardId } of franchiseAssignments) {
+      dashboardIds.add(dashboardId);
     }
-    return result as T;
   }
-  return obj;
-}
 
-router.get("/clients/:clientId/dashboards", async (req, res): Promise<void> => {
-  const params = ListClientDashboardsParams.safeParse(req.params);
-  if (!params.success) {
-    res.status(400).json({ error: params.error.message });
-    return;
-  }
-  const dashboards = await db
-    .select()
-    .from(dashboardsTable)
-    .where(eq(dashboardsTable.clientId, params.data.clientId))
-    .orderBy(dashboardsTable.order);
-  res.json(serializeDates(dashboards));
-});
-
-router.get("/dashboards/my", async (req, res): Promise<void> => {
-  const { userId } = getAuth(req);
-  if (!userId) {
-    res.status(401).json({ error: "Unauthorized" });
-    return;
-  }
-  const assignments = await db
-    .select()
-    .from(userClientsTable)
-    .where(eq(userClientsTable.clerkUserId, userId));
-
-  if (assignments.length === 0) {
+  if (dashboardIds.size === 0) {
     res.json([]);
     return;
   }
 
-  const clientIds = assignments.map((a) => a.clientId);
   const dashboards = await db
     .select()
-    .from(dashboardsTable)
-    .where(inArray(dashboardsTable.clientId, clientIds))
-    .orderBy(dashboardsTable.order);
-  res.json(serializeDates(dashboards));
+    .from(dashboardTable)
+    .where(inArray(dashboardTable.id, [...dashboardIds]))
+    .orderBy(dashboardTable.name);
+
+  res.json(dashboards);
 });
 
-router.get("/dashboards", async (_req, res): Promise<void> => {
-  const dashboards = await db.select().from(dashboardsTable).orderBy(dashboardsTable.order);
-  res.json(serializeDates(dashboards));
-});
+router.get("/dashboards/:id", requireAuth, async (req, res) => {
+  const user = req.user!;
+  const { id } = req.params;
 
-router.post("/dashboards", async (req, res): Promise<void> => {
-  const parsed = CreateDashboardBody.safeParse(req.body);
-  if (!parsed.success) {
-    res.status(400).json({ error: parsed.error.message });
-    return;
-  }
-  const [dashboard] = await db.insert(dashboardsTable).values(parsed.data).returning();
-  res.status(201).json(serializeDates(dashboard));
-});
-
-router.get("/dashboards/:id", async (req, res): Promise<void> => {
-  const params = GetDashboardParams.safeParse(req.params);
-  if (!params.success) {
-    res.status(400).json({ error: params.error.message });
-    return;
-  }
-  const [dashboard] = await db.select().from(dashboardsTable).where(eq(dashboardsTable.id, params.data.id));
-  if (!dashboard) {
-    res.status(404).json({ error: "Dashboard not found" });
-    return;
-  }
-  res.json(serializeDates(dashboard));
-});
-
-router.patch("/dashboards/:id", async (req, res): Promise<void> => {
-  const params = UpdateDashboardParams.safeParse(req.params);
-  if (!params.success) {
-    res.status(400).json({ error: params.error.message });
-    return;
-  }
-  const parsed = UpdateDashboardBody.safeParse(req.body);
-  if (!parsed.success) {
-    res.status(400).json({ error: parsed.error.message });
-    return;
-  }
   const [dashboard] = await db
-    .update(dashboardsTable)
-    .set(parsed.data)
-    .where(eq(dashboardsTable.id, params.data.id))
-    .returning();
+    .select()
+    .from(dashboardTable)
+    .where(eq(dashboardTable.id, id))
+    .limit(1);
+
   if (!dashboard) {
-    res.status(404).json({ error: "Dashboard not found" });
+    res.status(404).json({ error: "Not found" });
     return;
   }
-  res.json(serializeDates(dashboard));
+
+  if (user.role === "admin") {
+    res.json(dashboard);
+    return;
+  }
+
+  if (user.role === "brand_admin" && user.companyId === dashboard.companyId) {
+    res.json(dashboard);
+    return;
+  }
+
+  const [directAccess] = await db
+    .select()
+    .from(dashboardUserTable)
+    .where(
+      and(
+        eq(dashboardUserTable.dashboardId, id),
+        eq(dashboardUserTable.userId, user.id),
+      ),
+    )
+    .limit(1);
+
+  if (directAccess) {
+    res.json(dashboard);
+    return;
+  }
+
+  if (user.franchiseId) {
+    const [franchiseAccess] = await db
+      .select()
+      .from(dashboardFranchiseTable)
+      .where(
+        and(
+          eq(dashboardFranchiseTable.dashboardId, id),
+          eq(dashboardFranchiseTable.franchiseId, user.franchiseId),
+        ),
+      )
+      .limit(1);
+
+    if (franchiseAccess) {
+      res.json(dashboard);
+      return;
+    }
+  }
+
+  res.status(403).json({ error: "Forbidden" });
 });
 
-router.delete("/dashboards/:id", async (req, res): Promise<void> => {
-  const params = DeleteDashboardParams.safeParse(req.params);
-  if (!params.success) {
-    res.status(400).json({ error: params.error.message });
+router.post("/dashboards", requireAuth, requireRole("admin", "brand_admin"), async (req, res) => {
+  const user = req.user!;
+  const { name, companyId, lookerUrl, active = true } = req.body as {
+    name: string;
+    companyId: string;
+    lookerUrl: string;
+    active?: boolean;
+  };
+
+  if (!name || !companyId || !lookerUrl) {
+    res.status(400).json({ error: "name, companyId, and lookerUrl are required" });
     return;
   }
-  const [dashboard] = await db.delete(dashboardsTable).where(eq(dashboardsTable.id, params.data.id)).returning();
-  if (!dashboard) {
-    res.status(404).json({ error: "Dashboard not found" });
+
+  if (user.role === "brand_admin" && user.companyId !== companyId) {
+    res.status(403).json({ error: "Forbidden" });
     return;
   }
-  res.sendStatus(204);
+
+  const id = randomUUID();
+  const [created] = await db
+    .insert(dashboardTable)
+    .values({ id, name, companyId, lookerUrl, active })
+    .returning();
+
+  res.status(201).json(created);
+});
+
+router.put("/dashboards/:id", requireAuth, requireRole("admin", "brand_admin"), async (req, res) => {
+  const user = req.user!;
+  const { id } = req.params;
+
+  const [existing] = await db
+    .select()
+    .from(dashboardTable)
+    .where(eq(dashboardTable.id, id))
+    .limit(1);
+
+  if (!existing) {
+    res.status(404).json({ error: "Not found" });
+    return;
+  }
+
+  if (user.role === "brand_admin" && user.companyId !== existing.companyId) {
+    res.status(403).json({ error: "Forbidden" });
+    return;
+  }
+
+  const { name, lookerUrl, active } = req.body as {
+    name?: string;
+    lookerUrl?: string;
+    active?: boolean;
+  };
+
+  const updates: Record<string, unknown> = {};
+  if (name !== undefined) updates["name"] = name;
+  if (lookerUrl !== undefined) updates["lookerUrl"] = lookerUrl;
+  if (active !== undefined) updates["active"] = active;
+
+  if (Object.keys(updates).length === 0) {
+    res.status(400).json({ error: "No fields to update" });
+    return;
+  }
+
+  const [updated] = await db
+    .update(dashboardTable)
+    .set(updates)
+    .where(eq(dashboardTable.id, id))
+    .returning();
+
+  res.json(updated);
+});
+
+router.delete("/dashboards/:id", requireAuth, requireRole("admin", "brand_admin"), async (req, res) => {
+  const user = req.user!;
+  const { id } = req.params;
+
+  if (user.role === "brand_admin") {
+    const [existing] = await db
+      .select()
+      .from(dashboardTable)
+      .where(eq(dashboardTable.id, id))
+      .limit(1);
+    if (!existing || existing.companyId !== user.companyId) {
+      res.status(403).json({ error: "Forbidden" });
+      return;
+    }
+  }
+
+  await db.delete(dashboardTable).where(eq(dashboardTable.id, id));
+  res.status(204).send();
+});
+
+router.get("/dashboards/:id/users", requireAuth, requireRole("admin", "brand_admin"), async (req, res) => {
+  const { id } = req.params;
+  const rows = await db
+    .select({ userId: dashboardUserTable.userId })
+    .from(dashboardUserTable)
+    .where(eq(dashboardUserTable.dashboardId, id));
+  res.json(rows.map((r) => r.userId));
+});
+
+router.put("/dashboards/:id/users", requireAuth, requireRole("admin", "brand_admin"), async (req, res) => {
+  const { id } = req.params;
+  const { userIds } = req.body as { userIds: string[] };
+
+  if (!Array.isArray(userIds)) {
+    res.status(400).json({ error: "userIds must be an array" });
+    return;
+  }
+
+  await db.delete(dashboardUserTable).where(eq(dashboardUserTable.dashboardId, id));
+
+  if (userIds.length > 0) {
+    await db
+      .insert(dashboardUserTable)
+      .values(userIds.map((userId) => ({ dashboardId: id, userId })))
+      .onConflictDoNothing();
+  }
+
+  res.json({ ok: true });
+});
+
+router.get("/dashboards/:id/franchises", requireAuth, requireRole("admin", "brand_admin"), async (req, res) => {
+  const { id } = req.params;
+  const rows = await db
+    .select({ franchiseId: dashboardFranchiseTable.franchiseId })
+    .from(dashboardFranchiseTable)
+    .where(eq(dashboardFranchiseTable.dashboardId, id));
+  res.json(rows.map((r) => r.franchiseId));
+});
+
+router.put("/dashboards/:id/franchises", requireAuth, requireRole("admin", "brand_admin"), async (req, res) => {
+  const { id } = req.params;
+  const { franchiseIds } = req.body as { franchiseIds: string[] };
+
+  if (!Array.isArray(franchiseIds)) {
+    res.status(400).json({ error: "franchiseIds must be an array" });
+    return;
+  }
+
+  await db.delete(dashboardFranchiseTable).where(eq(dashboardFranchiseTable.dashboardId, id));
+
+  if (franchiseIds.length > 0) {
+    await db
+      .insert(dashboardFranchiseTable)
+      .values(franchiseIds.map((franchiseId) => ({ dashboardId: id, franchiseId })))
+      .onConflictDoNothing();
+  }
+
+  res.json({ ok: true });
 });
 
 export default router;

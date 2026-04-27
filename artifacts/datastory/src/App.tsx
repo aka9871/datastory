@@ -1,190 +1,94 @@
-import { useEffect, useRef } from "react";
-import { ClerkProvider, SignIn, Show, useClerk } from "@clerk/react";
-import { shadcn } from "@clerk/themes";
-import { Switch, Route, useLocation, Router as WouterRouter, Redirect } from "wouter";
-import { QueryClient, QueryClientProvider, useQueryClient } from "@tanstack/react-query";
+import { Switch, Route, Router as WouterRouter, Redirect } from "wouter";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import { AuthProvider, useAuth } from "@/hooks/useAuth";
 
 import Home from "@/pages/home";
+import Login from "@/pages/login";
 import Dashboards from "@/pages/dashboards";
 import DashboardViewer from "@/pages/dashboards/viewer";
 import AdminOverview from "@/pages/admin";
-import AdminClients from "@/pages/admin/clients";
-import AdminClientDashboards from "@/pages/admin/clients/dashboards";
+import AdminCompanies from "@/pages/admin/companies";
+import AdminCompanyDashboards from "@/pages/admin/companies/dashboards";
 import AdminDashboards from "@/pages/admin/dashboards";
 import AdminUsers from "@/pages/admin/users";
 import NotFound from "@/pages/not-found";
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      retry: false,
+      staleTime: 30_000,
+    },
+  },
+});
 
-const clerkPubKey = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY;
-const clerkProxyUrl = import.meta.env.VITE_CLERK_PROXY_URL;
 const basePath = import.meta.env.BASE_URL.replace(/\/$/, "");
 
-function stripBase(path: string): string {
-  return basePath && path.startsWith(basePath)
-    ? path.slice(basePath.length) || "/"
-    : path;
-}
+function ProtectedRoute({ component: Component, adminOnly = false }: { component: React.ComponentType; adminOnly?: boolean }) {
+  const { user, isLoading } = useAuth();
 
-if (!clerkPubKey) {
-  throw new Error("Missing VITE_CLERK_PUBLISHABLE_KEY in .env file");
-}
+  if (isLoading) return null;
+  if (!user) return <Redirect to="/login" />;
+  if (adminOnly && user.role !== "admin") return <Redirect to="/dashboards" />;
 
-const clerkAppearance = {
-  theme: shadcn,
-  cssLayerName: "clerk",
-  options: {
-    logoPlacement: "inside" as const,
-    logoLinkUrl: basePath || "/",
-    logoImageUrl: `${window.location.origin}${basePath}/logo.svg`,
-  },
-  variables: {
-    colorPrimary: "#FF091B",
-    colorForeground: "#FFFFFF",
-    colorMutedForeground: "#999999",
-    colorDanger: "#FF091B",
-    colorBackground: "#111111",
-    colorInput: "#222222",
-    colorInputForeground: "#FFFFFF",
-    colorNeutral: "#444444",
-    fontFamily: "'Outfit', sans-serif",
-    borderRadius: "0px",
-  },
-  elements: {
-    rootBox: "w-full",
-    cardBox: "bg-[#111111] text-white rounded-none w-[440px] max-w-full overflow-hidden border border-neutral-800",
-    card: "!shadow-none !border-0 !bg-transparent !rounded-none",
-    footer: "!shadow-none !border-0 !bg-transparent !rounded-none",
-    headerTitle: "text-white font-serif tracking-tight",
-    headerSubtitle: "text-neutral-400",
-    socialButtonsBlockButtonText: "text-white font-medium",
-    formFieldLabel: "text-white",
-    footerActionLink: "text-primary hover:text-primary/80",
-    footerActionText: "text-neutral-400",
-    dividerText: "text-neutral-500",
-    identityPreviewEditButton: "text-primary",
-    formFieldSuccessText: "text-green-500",
-    alertText: "text-white",
-  },
-};
-
-function SignInPage() {
-  return (
-    <div className="flex min-h-[100dvh] items-center justify-center bg-background px-4">
-      <SignIn routing="path" path={`${basePath}/sign-in`} signUpUrl={`${basePath}/sign-up`} />
-    </div>
-  );
-}
-
-function ClerkQueryClientCacheInvalidator() {
-  const { addListener } = useClerk();
-  const queryClientInstance = useQueryClient();
-  const prevUserIdRef = useRef<string | null | undefined>(undefined);
-
-  useEffect(() => {
-    const unsubscribe = addListener(({ user }) => {
-      const userId = user?.id ?? null;
-      if (
-        prevUserIdRef.current !== undefined &&
-        prevUserIdRef.current !== userId
-      ) {
-        queryClientInstance.clear();
-      }
-      prevUserIdRef.current = userId;
-    });
-    return unsubscribe;
-  }, [addListener, queryClientInstance]);
-
-  return null;
+  return <Component />;
 }
 
 function HomeRedirect() {
-  return (
-    <>
-      <Show when="signed-in">
-        <Redirect to="/dashboards" />
-      </Show>
-      <Show when="signed-out">
-        <Home />
-      </Show>
-    </>
-  );
+  const { user, isLoading } = useAuth();
+  if (isLoading) return null;
+  if (user) return <Redirect to="/dashboards" />;
+  return <Home />;
 }
 
-function ProtectedRoute({ component: Component }: { component: any }) {
+function AppRoutes() {
   return (
-    <>
-      <Show when="signed-in">
-        <Component />
-      </Show>
-      <Show when="signed-out">
-        <Redirect to="/sign-in" />
-      </Show>
-    </>
-  );
-}
+    <TooltipProvider>
+      <Switch>
+        <Route path="/" component={HomeRedirect} />
+        <Route path="/login" component={Login} />
+        
+        <Route path="/dashboards">
+          <ProtectedRoute component={Dashboards} />
+        </Route>
+        <Route path="/dashboards/:id">
+          <ProtectedRoute component={DashboardViewer} />
+        </Route>
+        
+        <Route path="/admin">
+          <ProtectedRoute component={AdminOverview} adminOnly />
+        </Route>
+        <Route path="/admin/companies">
+          <ProtectedRoute component={AdminCompanies} adminOnly />
+        </Route>
+        <Route path="/admin/companies/:id/dashboards">
+          <ProtectedRoute component={AdminCompanyDashboards} adminOnly />
+        </Route>
+        <Route path="/admin/dashboards">
+          <ProtectedRoute component={AdminDashboards} adminOnly />
+        </Route>
+        <Route path="/admin/users">
+          <ProtectedRoute component={AdminUsers} adminOnly />
+        </Route>
 
-function ClerkProviderWithRoutes() {
-  const [, setLocation] = useLocation();
-
-  return (
-    <ClerkProvider
-      publishableKey={clerkPubKey}
-      proxyUrl={clerkProxyUrl}
-      appearance={clerkAppearance}
-      signInUrl={`${basePath}/sign-in`}
-      routerPush={(to) => setLocation(stripBase(to))}
-      routerReplace={(to) => setLocation(stripBase(to), { replace: true })}
-    >
-      <QueryClientProvider client={queryClient}>
-        <ClerkQueryClientCacheInvalidator />
-        <TooltipProvider>
-          <Switch>
-            <Route path="/" component={HomeRedirect} />
-            <Route path="/sign-in/*?" component={SignInPage} />
-            <Route path="/sign-up/*?">
-              <Redirect to="/sign-in" />
-            </Route>
-            
-            <Route path="/dashboards">
-              <ProtectedRoute component={Dashboards} />
-            </Route>
-            <Route path="/dashboards/:id">
-              <ProtectedRoute component={DashboardViewer} />
-            </Route>
-            
-            <Route path="/admin">
-              <ProtectedRoute component={AdminOverview} />
-            </Route>
-            <Route path="/admin/clients">
-              <ProtectedRoute component={AdminClients} />
-            </Route>
-            <Route path="/admin/clients/:id/dashboards">
-              <ProtectedRoute component={AdminClientDashboards} />
-            </Route>
-            <Route path="/admin/dashboards">
-              <ProtectedRoute component={AdminDashboards} />
-            </Route>
-            <Route path="/admin/users">
-              <ProtectedRoute component={AdminUsers} />
-            </Route>
-
-            <Route component={NotFound} />
-          </Switch>
-          <Toaster />
-        </TooltipProvider>
-      </QueryClientProvider>
-    </ClerkProvider>
+        <Route component={NotFound} />
+      </Switch>
+      <Toaster />
+    </TooltipProvider>
   );
 }
 
 function App() {
   return (
-    <WouterRouter base={basePath}>
-      <ClerkProviderWithRoutes />
-    </WouterRouter>
+    <QueryClientProvider client={queryClient}>
+      <WouterRouter base={basePath}>
+        <AuthProvider>
+          <AppRoutes />
+        </AuthProvider>
+      </WouterRouter>
+    </QueryClientProvider>
   );
 }
 

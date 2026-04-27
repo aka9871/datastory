@@ -2,13 +2,13 @@ import { useState } from "react";
 import { AdminLayout } from "@/components/layout";
 import {
   useListUsers,
-  useListClients,
+  useListCompanies,
   useCreateUser,
+  useUpdateUser,
   useDeleteUser,
-  useAssignClientToUser,
-  useRemoveClientFromUser,
   getListUsersQueryKey,
 } from "@workspace/api-client-react";
+import type { User } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -19,7 +19,7 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
+  DialogFooter,
 } from "@/components/ui/dialog";
 import {
   Select,
@@ -28,263 +28,395 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Plus, Trash2, UserCheck, UserX, X } from "lucide-react";
+import { Plus, Trash2, Pencil, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+
+const ROLE_LABELS: Record<string, string> = {
+  admin: "Admin",
+  brand_admin: "Brand Admin",
+  viewer: "Viewer",
+};
+
+const ROLE_VARIANTS: Record<string, "default" | "secondary" | "outline"> = {
+  admin: "default",
+  brand_admin: "secondary",
+  viewer: "outline",
+};
+
+type FormState = {
+  email: string;
+  firstname: string;
+  lastname: string;
+  role: "admin" | "brand_admin" | "viewer";
+  password: string;
+  companyId: string;
+};
+
+const emptyForm: FormState = {
+  email: "",
+  firstname: "",
+  lastname: "",
+  role: "viewer",
+  password: "",
+  companyId: "",
+};
 
 export default function AdminUsers() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const { data: users, isLoading: loadingUsers } = useListUsers();
-  const { data: clients } = useListClients();
+  const { data: users, isLoading } = useListUsers();
+  const { data: companies } = useListCompanies();
 
   const createUser = useCreateUser();
+  const updateUser = useUpdateUser();
   const deleteUser = useDeleteUser();
-  const assignClient = useAssignClientToUser();
-  const removeClient = useRemoveClientFromUser();
 
   const [createOpen, setCreateOpen] = useState(false);
-  const [form, setForm] = useState({
-    email: "",
-    password: "",
-    firstName: "",
-    lastName: "",
-  });
+  const [editingUser, setEditingUser] = useState<User | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<User | null>(null);
+  const [form, setForm] = useState<FormState>(emptyForm);
 
-  const invalidateUsers = () =>
+  function openCreate() {
+    setForm(emptyForm);
+    setCreateOpen(true);
+  }
+
+  function openEdit(user: User) {
+    setForm({
+      email: user.email,
+      firstname: user.firstname,
+      lastname: user.lastname,
+      role: user.role as "admin" | "brand_admin" | "viewer",
+      password: "",
+      companyId: user.companyId ?? "",
+    });
+    setEditingUser(user);
+  }
+
+  function invalidate() {
     queryClient.invalidateQueries({ queryKey: getListUsersQueryKey() });
+  }
 
-  const handleCreate = () => {
-    if (!form.email || !form.password) {
-      toast({ title: "Email and password are required", variant: "destructive" });
-      return;
-    }
+  function handleCreate(e: React.FormEvent) {
+    e.preventDefault();
     createUser.mutate(
-      { data: { email: form.email, password: form.password, firstName: form.firstName || null, lastName: form.lastName || null } },
+      {
+        data: {
+          email: form.email,
+          firstname: form.firstname,
+          lastname: form.lastname,
+          role: form.role,
+          password: form.password || undefined,
+          companyId: form.companyId || null,
+        },
+      },
       {
         onSuccess: () => {
-          toast({ title: "User created successfully" });
-          setForm({ email: "", password: "", firstName: "", lastName: "" });
+          toast({ title: "Utilisateur créé" });
           setCreateOpen(false);
-          invalidateUsers();
+          invalidate();
         },
-        onError: (err: any) => {
-          toast({
-            title: "Failed to create user",
-            description: err?.message ?? "Unknown error",
-            variant: "destructive",
-          });
-        },
+        onError: () => toast({ title: "Erreur", variant: "destructive" }),
       },
     );
-  };
+  }
 
-  const handleDelete = (userId: string, email: string) => {
-    if (!confirm(`Delete user ${email}? This cannot be undone.`)) return;
+  function handleUpdate(e: React.FormEvent) {
+    e.preventDefault();
+    if (!editingUser) return;
+    updateUser.mutate(
+      {
+        id: editingUser.id,
+        data: {
+          email: form.email,
+          firstname: form.firstname,
+          lastname: form.lastname,
+          role: form.role,
+          password: form.password || undefined,
+          companyId: form.companyId || null,
+        },
+      },
+      {
+        onSuccess: () => {
+          toast({ title: "Utilisateur mis à jour" });
+          setEditingUser(null);
+          invalidate();
+        },
+        onError: () => toast({ title: "Erreur", variant: "destructive" }),
+      },
+    );
+  }
+
+  function handleDelete() {
+    if (!deleteTarget) return;
     deleteUser.mutate(
-      { userId },
+      { id: deleteTarget.id },
       {
         onSuccess: () => {
-          toast({ title: "User deleted" });
-          invalidateUsers();
+          toast({ title: "Utilisateur supprimé" });
+          setDeleteTarget(null);
+          invalidate();
         },
-        onError: () => toast({ title: "Failed to delete user", variant: "destructive" }),
+        onError: () => toast({ title: "Erreur", variant: "destructive" }),
       },
     );
-  };
+  }
 
-  const handleAssignClient = (userId: string, clientId: string) => {
-    assignClient.mutate(
-      { userId, data: { clientId: Number(clientId) } },
-      {
-        onSuccess: () => {
-          toast({ title: "Client assigned" });
-          invalidateUsers();
-        },
-        onError: () => toast({ title: "Failed to assign client", variant: "destructive" }),
-      },
-    );
-  };
-
-  const handleRemoveClient = (userId: string, clientId: number) => {
-    removeClient.mutate(
-      { userId, clientId },
-      {
-        onSuccess: () => {
-          toast({ title: "Access removed" });
-          invalidateUsers();
-        },
-        onError: () => toast({ title: "Failed to remove client", variant: "destructive" }),
-      },
-    );
-  };
+  const UserForm = ({
+    onSubmit,
+    isPending,
+  }: {
+    onSubmit: (e: React.FormEvent) => void;
+    isPending: boolean;
+  }) => (
+    <form onSubmit={onSubmit} className="space-y-4">
+      <div className="grid grid-cols-2 gap-4">
+        <div className="space-y-2">
+          <Label>Prénom</Label>
+          <Input
+            value={form.firstname}
+            onChange={(e) => setForm({ ...form, firstname: e.target.value })}
+            required
+            className="rounded-none"
+          />
+        </div>
+        <div className="space-y-2">
+          <Label>Nom</Label>
+          <Input
+            value={form.lastname}
+            onChange={(e) => setForm({ ...form, lastname: e.target.value })}
+            required
+            className="rounded-none"
+          />
+        </div>
+      </div>
+      <div className="space-y-2">
+        <Label>Email</Label>
+        <Input
+          type="email"
+          value={form.email}
+          onChange={(e) => setForm({ ...form, email: e.target.value })}
+          required
+          className="rounded-none"
+        />
+      </div>
+      <div className="space-y-2">
+        <Label>Mot de passe {editingUser && "(laisser vide pour ne pas changer)"}</Label>
+        <Input
+          type="password"
+          value={form.password}
+          onChange={(e) => setForm({ ...form, password: e.target.value })}
+          className="rounded-none"
+          required={!editingUser}
+        />
+      </div>
+      <div className="space-y-2">
+        <Label>Rôle</Label>
+        <Select
+          value={form.role}
+          onValueChange={(v) => setForm({ ...form, role: v as FormState["role"] })}
+        >
+          <SelectTrigger className="rounded-none">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="admin">Admin</SelectItem>
+            <SelectItem value="brand_admin">Brand Admin</SelectItem>
+            <SelectItem value="viewer">Viewer</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+      <div className="space-y-2">
+        <Label>Entreprise</Label>
+        <Select
+          value={form.companyId || "none"}
+          onValueChange={(v) => setForm({ ...form, companyId: v === "none" ? "" : v })}
+        >
+          <SelectTrigger className="rounded-none">
+            <SelectValue placeholder="Aucune" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="none">Aucune</SelectItem>
+            {companies?.map((c) => (
+              <SelectItem key={c.id} value={c.id}>
+                {c.name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+      <DialogFooter>
+        <Button type="submit" disabled={isPending} className="rounded-none">
+          {isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+          {editingUser ? "Mettre à jour" : "Créer"}
+        </Button>
+      </DialogFooter>
+    </form>
+  );
 
   return (
     <AdminLayout>
-      <div className="flex items-center justify-between mb-8">
+      <div className="mb-8 flex justify-between items-end">
         <div>
-          <h1 className="text-3xl font-serif font-bold tracking-tight">Users</h1>
-          <p className="text-muted-foreground mt-1">
-            Create user accounts and control which clients they can access.
+          <h1 className="text-3xl font-serif font-bold tracking-tight mb-2">
+            Utilisateurs
+          </h1>
+          <p className="text-muted-foreground">
+            Gestion des comptes utilisateurs.
           </p>
         </div>
-        <Dialog open={createOpen} onOpenChange={setCreateOpen}>
-          <DialogTrigger asChild>
-            <Button>
-              <Plus className="h-4 w-4 mr-2" />
-              New User
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="rounded-none border-border bg-card text-foreground max-w-md">
-            <DialogHeader>
-              <DialogTitle className="font-serif text-xl">Create User Account</DialogTitle>
-            </DialogHeader>
-            <div className="space-y-4 pt-2">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label className="text-sm">First name</Label>
-                  <Input
-                    value={form.firstName}
-                    onChange={(e) => setForm((f) => ({ ...f, firstName: e.target.value }))}
-                    placeholder="Jean"
-                    className="rounded-none mt-1"
-                  />
-                </div>
-                <div>
-                  <Label className="text-sm">Last name</Label>
-                  <Input
-                    value={form.lastName}
-                    onChange={(e) => setForm((f) => ({ ...f, lastName: e.target.value }))}
-                    placeholder="Dupont"
-                    className="rounded-none mt-1"
-                  />
-                </div>
-              </div>
-              <div>
-                <Label className="text-sm">Email *</Label>
-                <Input
-                  type="email"
-                  value={form.email}
-                  onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))}
-                  placeholder="user@client.com"
-                  className="rounded-none mt-1"
-                />
-              </div>
-              <div>
-                <Label className="text-sm">Password *</Label>
-                <Input
-                  type="password"
-                  value={form.password}
-                  onChange={(e) => setForm((f) => ({ ...f, password: e.target.value }))}
-                  placeholder="Minimum 8 characters"
-                  className="rounded-none mt-1"
-                />
-              </div>
-              <div className="flex justify-end gap-3 pt-2">
-                <Button variant="ghost" onClick={() => setCreateOpen(false)}>
-                  Cancel
-                </Button>
-                <Button onClick={handleCreate} disabled={createUser.isPending}>
-                  {createUser.isPending ? "Creating..." : "Create User"}
-                </Button>
-              </div>
-            </div>
-          </DialogContent>
-        </Dialog>
+        <Button onClick={openCreate} className="rounded-none">
+          <Plus className="h-4 w-4 mr-2" />
+          Nouvel utilisateur
+        </Button>
       </div>
 
-      {loadingUsers ? (
-        <div className="space-y-3">
-          {[1, 2, 3].map((i) => (
-            <div key={i} className="border border-border p-4">
-              <Skeleton className="h-5 w-48 mb-2" />
-              <Skeleton className="h-4 w-64" />
-            </div>
+      {isLoading ? (
+        <div className="space-y-2">
+          {[...Array(5)].map((_, i) => (
+            <Skeleton key={i} className="h-12 w-full" />
           ))}
         </div>
-      ) : !users || users.length === 0 ? (
-        <div className="text-center py-20 border border-dashed border-border bg-card/50">
-          <UserX className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-          <h3 className="text-lg font-medium mb-1">No users yet</h3>
-          <p className="text-muted-foreground">Create a user account to grant client access.</p>
-        </div>
       ) : (
-        <div className="space-y-3">
-          {users.map((user) => {
-            const assignedClients = (clients ?? []).filter((c) =>
-              user.assignedClientIds.includes(c.id),
-            );
-            const unassignedClients = (clients ?? []).filter(
-              (c) => !user.assignedClientIds.includes(c.id),
-            );
-            return (
-              <div key={user.id} className="border border-border bg-card p-5">
-                <div className="flex items-start justify-between gap-4">
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-1">
-                      <span className="font-medium">
-                        {user.firstName || user.lastName
-                          ? `${user.firstName ?? ""} ${user.lastName ?? ""}`.trim()
-                          : user.email}
-                      </span>
-                      {(user.firstName || user.lastName) && (
-                        <span className="text-sm text-muted-foreground">{user.email}</span>
-                      )}
-                    </div>
-
-                    <div className="flex flex-wrap items-center gap-2 mt-3">
-                      {assignedClients.length === 0 ? (
-                        <span className="text-xs text-muted-foreground">No clients assigned</span>
-                      ) : (
-                        assignedClients.map((c) => (
-                          <Badge
-                            key={c.id}
-                            variant="secondary"
-                            className="rounded-none pr-1 flex items-center gap-1"
+        <div className="border border-border">
+          <Table>
+            <TableHeader>
+              <TableRow className="border-border">
+                <TableHead>Nom</TableHead>
+                <TableHead>Email</TableHead>
+                <TableHead>Rôle</TableHead>
+                <TableHead>Entreprise</TableHead>
+                <TableHead>Statut</TableHead>
+                <TableHead className="w-24" />
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {users?.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={6} className="text-center text-muted-foreground py-8">
+                    Aucun utilisateur
+                  </TableCell>
+                </TableRow>
+              ) : (
+                users?.map((user) => {
+                  const company = companies?.find((c) => c.id === user.companyId);
+                  return (
+                    <TableRow key={user.id} className="border-border">
+                      <TableCell className="font-medium">
+                        {user.firstname} {user.lastname}
+                      </TableCell>
+                      <TableCell className="text-muted-foreground text-sm">
+                        {user.email}
+                      </TableCell>
+                      <TableCell>
+                        <Badge
+                          variant={ROLE_VARIANTS[user.role] ?? "outline"}
+                          className="rounded-none text-xs"
+                        >
+                          {ROLE_LABELS[user.role] ?? user.role}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-muted-foreground text-sm">
+                        {company?.name ?? "—"}
+                      </TableCell>
+                      <TableCell>
+                        <Badge
+                          variant={user.isActive ? "default" : "secondary"}
+                          className="rounded-none text-xs"
+                        >
+                          {user.isActive ? "Actif" : "Inactif"}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex gap-1 justify-end">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8"
+                            onClick={() => openEdit(user)}
                           >
-                            <UserCheck className="h-3 w-3 text-primary" />
-                            {c.name}
-                            <button
-                              onClick={() => handleRemoveClient(user.id, c.id)}
-                              className="ml-1 hover:text-destructive transition-colors"
-                            >
-                              <X className="h-3 w-3" />
-                            </button>
-                          </Badge>
-                        ))
-                      )}
-
-                      {unassignedClients.length > 0 && (
-                        <Select onValueChange={(val) => handleAssignClient(user.id, val)}>
-                          <SelectTrigger className="h-6 text-xs rounded-none border-dashed w-auto min-w-[120px]">
-                            <SelectValue placeholder="+ Add client" />
-                          </SelectTrigger>
-                          <SelectContent className="rounded-none">
-                            {unassignedClients.map((c) => (
-                              <SelectItem key={c.id} value={String(c.id)}>
-                                {c.name}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      )}
-                    </div>
-                  </div>
-
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => handleDelete(user.id, user.email)}
-                    className="text-muted-foreground hover:text-destructive shrink-0"
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
-                </div>
-              </div>
-            );
-          })}
+                            <Pencil className="h-3.5 w-3.5" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 text-destructive hover:text-destructive"
+                            onClick={() => setDeleteTarget(user)}
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })
+              )}
+            </TableBody>
+          </Table>
         </div>
       )}
+
+      <Dialog open={createOpen} onOpenChange={setCreateOpen}>
+        <DialogContent className="rounded-none">
+          <DialogHeader>
+            <DialogTitle>Nouvel utilisateur</DialogTitle>
+          </DialogHeader>
+          <UserForm onSubmit={handleCreate} isPending={createUser.isPending} />
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!editingUser} onOpenChange={(o) => !o && setEditingUser(null)}>
+        <DialogContent className="rounded-none">
+          <DialogHeader>
+            <DialogTitle>Modifier l'utilisateur</DialogTitle>
+          </DialogHeader>
+          <UserForm onSubmit={handleUpdate} isPending={updateUser.isPending} />
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!deleteTarget} onOpenChange={(o) => !o && setDeleteTarget(null)}>
+        <DialogContent className="rounded-none">
+          <DialogHeader>
+            <DialogTitle>Supprimer l'utilisateur</DialogTitle>
+          </DialogHeader>
+          <p className="text-muted-foreground">
+            Êtes-vous sûr de vouloir supprimer{" "}
+            <strong>
+              {deleteTarget?.firstname} {deleteTarget?.lastname}
+            </strong>{" "}
+            ? Cette action est irréversible.
+          </p>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setDeleteTarget(null)}
+              className="rounded-none"
+            >
+              Annuler
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleDelete}
+              disabled={deleteUser.isPending}
+              className="rounded-none"
+            >
+              {deleteUser.isPending && (
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              )}
+              Supprimer
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </AdminLayout>
   );
 }

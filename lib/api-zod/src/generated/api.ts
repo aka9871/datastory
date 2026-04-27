@@ -3,7 +3,7 @@
  * Do not edit manually.
  * Api
  * Datastory API specification
- * OpenAPI spec version: 0.1.0
+ * OpenAPI spec version: 0.2.0
  */
 import * as zod from "zod";
 
@@ -15,126 +15,186 @@ export const HealthCheckResponse = zod.object({
 });
 
 /**
- * @summary List all clients
+ * @summary Login with email and password
  */
-export const ListClientsResponseItem = zod.object({
-  id: zod.number(),
+export const LoginBody = zod.object({
+  email: zod.string(),
+  password: zod.string(),
+});
+
+export const LoginResponse = zod.object({
+  id: zod.string(),
+  email: zod.string(),
+  firstname: zod.string(),
+  lastname: zod.string(),
+  role: zod.enum(["admin", "brand_admin", "viewer"]),
+  companyId: zod.string().nullish(),
+  franchiseId: zod.string().nullish(),
+});
+
+/**
+ * @summary Get current authenticated user
+ */
+export const GetMeResponse = zod.object({
+  id: zod.string(),
+  email: zod.string(),
+  firstname: zod.string(),
+  lastname: zod.string(),
+  role: zod.enum(["admin", "brand_admin", "viewer"]),
+  companyId: zod.string().nullish(),
+  franchiseId: zod.string().nullish(),
+});
+
+/**
+ * @summary List all companies
+ */
+export const ListCompaniesResponseItem = zod.object({
+  id: zod.string(),
   name: zod.string(),
   slug: zod.string(),
+  domain: zod.string(),
+  hasFranchise: zod.boolean(),
   logoUrl: zod.string().nullish(),
-  industry: zod.string().nullish(),
-  description: zod.string().nullish(),
-  active: zod.boolean(),
+  fontRegularFilename: zod.string().nullish(),
+  fontBoldFilename: zod.string().nullish(),
   createdAt: zod.string(),
-  updatedAt: zod.string(),
 });
-export const ListClientsResponse = zod.array(ListClientsResponseItem);
+export const ListCompaniesResponse = zod.array(ListCompaniesResponseItem);
 
 /**
- * @summary Create a new client
+ * @summary Create a new company
  */
-export const CreateClientBody = zod.object({
+export const CreateCompanyBody = zod.object({
   name: zod.string(),
   slug: zod.string(),
+  domain: zod.string(),
+  hasFranchise: zod.boolean().optional(),
   logoUrl: zod.string().nullish(),
-  industry: zod.string().nullish(),
-  description: zod.string().nullish(),
-  active: zod.boolean().optional(),
 });
 
 /**
- * @summary Get a client by ID
+ * @summary Get a company by ID
  */
-export const GetClientParams = zod.object({
-  id: zod.coerce.number(),
+export const GetCompanyParams = zod.object({
+  id: zod.coerce.string(),
 });
 
-export const GetClientResponse = zod.object({
-  id: zod.number(),
+export const GetCompanyResponse = zod.object({
+  id: zod.string(),
   name: zod.string(),
   slug: zod.string(),
+  domain: zod.string(),
+  hasFranchise: zod.boolean(),
   logoUrl: zod.string().nullish(),
-  industry: zod.string().nullish(),
-  description: zod.string().nullish(),
-  active: zod.boolean(),
+  fontRegularFilename: zod.string().nullish(),
+  fontBoldFilename: zod.string().nullish(),
   createdAt: zod.string(),
-  updatedAt: zod.string(),
 });
 
 /**
- * @summary Update a client
+ * @summary Update a company
  */
-export const UpdateClientParams = zod.object({
-  id: zod.coerce.number(),
+export const UpdateCompanyParams = zod.object({
+  id: zod.coerce.string(),
 });
 
-export const UpdateClientBody = zod.object({
+export const UpdateCompanyBody = zod.object({
   name: zod.string().optional(),
   slug: zod.string().optional(),
+  domain: zod.string().optional(),
+  hasFranchise: zod.boolean().optional(),
   logoUrl: zod.string().nullish(),
-  industry: zod.string().nullish(),
-  description: zod.string().nullish(),
-  active: zod.boolean().optional(),
 });
 
-export const UpdateClientResponse = zod.object({
-  id: zod.number(),
+export const UpdateCompanyResponse = zod.object({
+  id: zod.string(),
   name: zod.string(),
   slug: zod.string(),
+  domain: zod.string(),
+  hasFranchise: zod.boolean(),
   logoUrl: zod.string().nullish(),
-  industry: zod.string().nullish(),
-  description: zod.string().nullish(),
-  active: zod.boolean(),
+  fontRegularFilename: zod.string().nullish(),
+  fontBoldFilename: zod.string().nullish(),
   createdAt: zod.string(),
-  updatedAt: zod.string(),
 });
 
 /**
- * @summary Delete a client
+ * @summary Delete a company
  */
-export const DeleteClientParams = zod.object({
-  id: zod.coerce.number(),
+export const DeleteCompanyParams = zod.object({
+  id: zod.coerce.string(),
 });
 
 /**
- * @summary List dashboards for a client
+ * @summary List franchises
  */
-export const ListClientDashboardsParams = zod.object({
-  clientId: zod.coerce.number(),
+export const ListFranchisesQueryParams = zod.object({
+  companyId: zod.coerce.string().optional(),
 });
 
-export const ListClientDashboardsResponseItem = zod.object({
-  id: zod.number(),
-  clientId: zod.number(),
-  title: zod.string(),
-  description: zod.string().nullish(),
-  lookerstudioUrl: zod.string(),
-  thumbnailUrl: zod.string().nullish(),
-  category: zod.string().nullish(),
-  order: zod.number(),
-  active: zod.boolean(),
+export const ListFranchisesResponseItem = zod.object({
+  id: zod.string(),
+  name: zod.string(),
+  companyId: zod.string(),
+  code: zod.string(),
+  address: zod.string(),
+  zipcode: zod.string(),
   createdAt: zod.string(),
-  updatedAt: zod.string(),
 });
-export const ListClientDashboardsResponse = zod.array(
-  ListClientDashboardsResponseItem,
-);
+export const ListFranchisesResponse = zod.array(ListFranchisesResponseItem);
 
 /**
- * @summary List all dashboards
+ * @summary Create a franchise
+ */
+export const CreateFranchiseBody = zod.object({
+  name: zod.string(),
+  companyId: zod.string(),
+  code: zod.string().optional(),
+  address: zod.string().optional(),
+  zipcode: zod.string().optional(),
+});
+
+/**
+ * @summary Update a franchise
+ */
+export const UpdateFranchiseParams = zod.object({
+  id: zod.coerce.string(),
+});
+
+export const UpdateFranchiseBody = zod.object({
+  name: zod.string().optional(),
+  code: zod.string().optional(),
+  address: zod.string().optional(),
+  zipcode: zod.string().optional(),
+});
+
+export const UpdateFranchiseResponse = zod.object({
+  id: zod.string(),
+  name: zod.string(),
+  companyId: zod.string(),
+  code: zod.string(),
+  address: zod.string(),
+  zipcode: zod.string(),
+  createdAt: zod.string(),
+});
+
+/**
+ * @summary Delete a franchise
+ */
+export const DeleteFranchiseParams = zod.object({
+  id: zod.coerce.string(),
+});
+
+/**
+ * @summary List dashboards accessible to current user
  */
 export const ListDashboardsResponseItem = zod.object({
-  id: zod.number(),
-  clientId: zod.number(),
-  title: zod.string(),
-  description: zod.string().nullish(),
-  lookerstudioUrl: zod.string(),
-  thumbnailUrl: zod.string().nullish(),
-  category: zod.string().nullish(),
-  order: zod.number(),
+  id: zod.string(),
+  name: zod.string(),
+  companyId: zod.string(),
+  lookerUrl: zod.string(),
   active: zod.boolean(),
   createdAt: zod.string(),
-  updatedAt: zod.string(),
 });
 export const ListDashboardsResponse = zod.array(ListDashboardsResponseItem);
 
@@ -142,165 +202,188 @@ export const ListDashboardsResponse = zod.array(ListDashboardsResponseItem);
  * @summary Create a dashboard
  */
 export const CreateDashboardBody = zod.object({
-  clientId: zod.number(),
-  title: zod.string(),
-  description: zod.string().nullish(),
-  lookerstudioUrl: zod.string(),
-  thumbnailUrl: zod.string().nullish(),
-  category: zod.string().nullish(),
-  order: zod.number().optional(),
+  name: zod.string(),
+  companyId: zod.string(),
+  lookerUrl: zod.string(),
   active: zod.boolean().optional(),
 });
-
-/**
- * @summary Get dashboards for the current authenticated user
- */
-export const GetMyDashboardsResponseItem = zod.object({
-  id: zod.number(),
-  clientId: zod.number(),
-  title: zod.string(),
-  description: zod.string().nullish(),
-  lookerstudioUrl: zod.string(),
-  thumbnailUrl: zod.string().nullish(),
-  category: zod.string().nullish(),
-  order: zod.number(),
-  active: zod.boolean(),
-  createdAt: zod.string(),
-  updatedAt: zod.string(),
-});
-export const GetMyDashboardsResponse = zod.array(GetMyDashboardsResponseItem);
 
 /**
  * @summary Get a dashboard by ID
  */
 export const GetDashboardParams = zod.object({
-  id: zod.coerce.number(),
+  id: zod.coerce.string(),
 });
 
 export const GetDashboardResponse = zod.object({
-  id: zod.number(),
-  clientId: zod.number(),
-  title: zod.string(),
-  description: zod.string().nullish(),
-  lookerstudioUrl: zod.string(),
-  thumbnailUrl: zod.string().nullish(),
-  category: zod.string().nullish(),
-  order: zod.number(),
+  id: zod.string(),
+  name: zod.string(),
+  companyId: zod.string(),
+  lookerUrl: zod.string(),
   active: zod.boolean(),
   createdAt: zod.string(),
-  updatedAt: zod.string(),
 });
 
 /**
  * @summary Update a dashboard
  */
 export const UpdateDashboardParams = zod.object({
-  id: zod.coerce.number(),
+  id: zod.coerce.string(),
 });
 
 export const UpdateDashboardBody = zod.object({
-  clientId: zod.number().optional(),
-  title: zod.string().optional(),
-  description: zod.string().nullish(),
-  lookerstudioUrl: zod.string().optional(),
-  thumbnailUrl: zod.string().nullish(),
-  category: zod.string().nullish(),
-  order: zod.number().optional(),
+  name: zod.string().optional(),
+  lookerUrl: zod.string().optional(),
   active: zod.boolean().optional(),
 });
 
 export const UpdateDashboardResponse = zod.object({
-  id: zod.number(),
-  clientId: zod.number(),
-  title: zod.string(),
-  description: zod.string().nullish(),
-  lookerstudioUrl: zod.string(),
-  thumbnailUrl: zod.string().nullish(),
-  category: zod.string().nullish(),
-  order: zod.number(),
+  id: zod.string(),
+  name: zod.string(),
+  companyId: zod.string(),
+  lookerUrl: zod.string(),
   active: zod.boolean(),
   createdAt: zod.string(),
-  updatedAt: zod.string(),
 });
 
 /**
  * @summary Delete a dashboard
  */
 export const DeleteDashboardParams = zod.object({
-  id: zod.coerce.number(),
+  id: zod.coerce.string(),
 });
 
 /**
- * @summary Get overview statistics
+ * @summary Get user IDs assigned to a dashboard
  */
-export const GetOverviewStatsResponse = zod.object({
-  totalClients: zod.number(),
-  activeClients: zod.number(),
-  totalDashboards: zod.number(),
-  activeDashboards: zod.number(),
-  totalUsers: zod.number(),
+export const GetDashboardUsersParams = zod.object({
+  id: zod.coerce.string(),
+});
+
+export const GetDashboardUsersResponseItem = zod.string();
+export const GetDashboardUsersResponse = zod.array(
+  GetDashboardUsersResponseItem,
+);
+
+/**
+ * @summary Set users for a dashboard
+ */
+export const SetDashboardUsersParams = zod.object({
+  id: zod.coerce.string(),
+});
+
+export const SetDashboardUsersBody = zod.object({
+  userIds: zod.array(zod.string()),
 });
 
 /**
- * @summary List all Clerk users
+ * @summary Get franchise IDs assigned to a dashboard
  */
+export const GetDashboardFranchisesParams = zod.object({
+  id: zod.coerce.string(),
+});
+
+export const GetDashboardFranchisesResponseItem = zod.string();
+export const GetDashboardFranchisesResponse = zod.array(
+  GetDashboardFranchisesResponseItem,
+);
+
+/**
+ * @summary Set franchises for a dashboard
+ */
+export const SetDashboardFranchisesParams = zod.object({
+  id: zod.coerce.string(),
+});
+
+export const SetDashboardFranchisesBody = zod.object({
+  franchiseIds: zod.array(zod.string()),
+});
+
+/**
+ * @summary List users
+ */
+export const ListUsersQueryParams = zod.object({
+  companyId: zod.coerce.string().optional(),
+});
+
 export const ListUsersResponseItem = zod.object({
   id: zod.string(),
   email: zod.string(),
-  firstName: zod.string().nullish(),
-  lastName: zod.string().nullish(),
-  createdAt: zod.number(),
-  assignedClientIds: zod.array(zod.number()),
+  firstname: zod.string(),
+  lastname: zod.string(),
+  role: zod.enum(["admin", "brand_admin", "viewer"]),
+  companyId: zod.string().nullish(),
+  franchiseId: zod.string().nullish(),
+  isActive: zod.boolean(),
+  createdAt: zod.string(),
 });
 export const ListUsersResponse = zod.array(ListUsersResponseItem);
 
 /**
- * @summary Create a new user
+ * @summary Create a user
  */
 export const CreateUserBody = zod.object({
   email: zod.string(),
-  password: zod.string(),
-  firstName: zod.string().nullish(),
-  lastName: zod.string().nullish(),
+  firstname: zod.string(),
+  lastname: zod.string(),
+  role: zod.enum(["admin", "brand_admin", "viewer"]),
+  password: zod.string().optional(),
+  companyId: zod.string().nullish(),
+  franchiseId: zod.string().nullish(),
+});
+
+/**
+ * @summary Get a user by ID
+ */
+export const GetUserParams = zod.object({
+  id: zod.coerce.string(),
+});
+
+export const GetUserResponse = zod.object({
+  id: zod.string(),
+  email: zod.string(),
+  firstname: zod.string(),
+  lastname: zod.string(),
+  role: zod.enum(["admin", "brand_admin", "viewer"]),
+  companyId: zod.string().nullish(),
+  franchiseId: zod.string().nullish(),
+  isActive: zod.boolean(),
+  createdAt: zod.string(),
+});
+
+/**
+ * @summary Update a user
+ */
+export const UpdateUserParams = zod.object({
+  id: zod.coerce.string(),
+});
+
+export const UpdateUserBody = zod.object({
+  email: zod.string().optional(),
+  firstname: zod.string().optional(),
+  lastname: zod.string().optional(),
+  role: zod.enum(["admin", "brand_admin", "viewer"]).optional(),
+  password: zod.string().optional(),
+  companyId: zod.string().nullish(),
+  franchiseId: zod.string().nullish(),
+  isActive: zod.boolean().optional(),
+});
+
+export const UpdateUserResponse = zod.object({
+  id: zod.string(),
+  email: zod.string(),
+  firstname: zod.string(),
+  lastname: zod.string(),
+  role: zod.enum(["admin", "brand_admin", "viewer"]),
+  companyId: zod.string().nullish(),
+  franchiseId: zod.string().nullish(),
+  isActive: zod.boolean(),
+  createdAt: zod.string(),
 });
 
 /**
  * @summary Delete a user
  */
 export const DeleteUserParams = zod.object({
-  userId: zod.coerce.string(),
-});
-
-/**
- * @summary Get assigned clients for a user
- */
-export const GetUserClientsParams = zod.object({
-  userId: zod.coerce.string(),
-});
-
-export const GetUserClientsResponseItem = zod.object({
-  id: zod.number(),
-  clerkUserId: zod.string(),
-  clientId: zod.number(),
-  createdAt: zod.string(),
-});
-export const GetUserClientsResponse = zod.array(GetUserClientsResponseItem);
-
-/**
- * @summary Assign a client to a user
- */
-export const AssignClientToUserParams = zod.object({
-  userId: zod.coerce.string(),
-});
-
-export const AssignClientToUserBody = zod.object({
-  clientId: zod.number(),
-});
-
-/**
- * @summary Remove client assignment from a user
- */
-export const RemoveClientFromUserParams = zod.object({
-  userId: zod.coerce.string(),
-  clientId: zod.coerce.number(),
+  id: zod.coerce.string(),
 });

@@ -1,11 +1,10 @@
 import { Link, useLocation } from "wouter";
-import { useUser, useClerk } from "@clerk/react";
+import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
-import { LayoutDashboard, Users, BarChart3, LogOut } from "lucide-react";
+import { LayoutDashboard, Users, BarChart3, LogOut, Building2 } from "lucide-react";
 
 export function AppLayout({ children }: { children: React.ReactNode }) {
-  const { user } = useUser();
-  const { signOut } = useClerk();
+  const { user, logout } = useAuth();
   const [location] = useLocation();
 
   return (
@@ -15,30 +14,30 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
           <Link href="/dashboards" className="font-serif font-bold text-xl tracking-tight">
             DATA<span className="text-primary">STORY</span>
           </Link>
-          
+
           <nav className="hidden md:flex items-center gap-6">
-            <Link href="/dashboards" className={`text-sm font-medium transition-colors hover:text-foreground ${location === '/dashboards' ? 'text-foreground' : 'text-muted-foreground'}`}>
-              My Dashboards
+            <Link href="/dashboards" className={`text-sm font-medium transition-colors hover:text-foreground ${location === "/dashboards" ? "text-foreground" : "text-muted-foreground"}`}>
+              Mes Dashboards
             </Link>
-            <Link href="/admin" className={`text-sm font-medium transition-colors hover:text-foreground ${location.startsWith('/admin') ? 'text-foreground' : 'text-muted-foreground'}`}>
-              Admin
-            </Link>
+            {user?.role === "admin" && (
+              <Link href="/admin" className={`text-sm font-medium transition-colors hover:text-foreground ${location.startsWith("/admin") ? "text-foreground" : "text-muted-foreground"}`}>
+                Admin
+              </Link>
+            )}
           </nav>
         </div>
 
         <div className="flex items-center gap-4">
           <div className="text-sm text-muted-foreground hidden sm:block">
-            {user?.emailAddresses[0]?.emailAddress}
+            {user?.email}
           </div>
-          <Button variant="ghost" size="icon" onClick={() => signOut()}>
+          <Button variant="ghost" size="icon" onClick={logout} title="Se déconnecter">
             <LogOut className="h-4 w-4" />
           </Button>
         </div>
       </header>
 
-      <main className="flex-1 overflow-auto">
-        {children}
-      </main>
+      <main className="flex-1 overflow-auto">{children}</main>
     </div>
   );
 }
@@ -47,10 +46,10 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
   const [location] = useLocation();
 
   const navItems = [
-    { href: "/admin", label: "Overview", icon: BarChart3 },
-    { href: "/admin/users", label: "Users", icon: Users },
-    { href: "/admin/clients", label: "Clients", icon: LayoutDashboard },
-    { href: "/admin/dashboards", label: "All Dashboards", icon: LayoutDashboard },
+    { href: "/admin", label: "Vue d'ensemble", icon: BarChart3 },
+    { href: "/admin/users", label: "Utilisateurs", icon: Users },
+    { href: "/admin/companies", label: "Entreprises", icon: Building2 },
+    { href: "/admin/dashboards", label: "Dashboards", icon: LayoutDashboard },
   ];
 
   return (
@@ -64,10 +63,12 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
             <nav className="space-y-1">
               {navItems.map((item) => {
                 const Icon = item.icon;
-                const isActive = location === item.href || (item.href !== '/admin' && location.startsWith(item.href));
+                const isActive =
+                  location === item.href ||
+                  (item.href !== "/admin" && location.startsWith(item.href));
                 return (
                   <Link key={item.href} href={item.href}>
-                    <span className={`flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-none transition-colors ${isActive ? 'bg-primary/10 text-primary border-l-2 border-primary' : 'text-muted-foreground hover:bg-muted hover:text-foreground border-l-2 border-transparent'}`}>
+                    <span className={`flex items-center gap-3 px-3 py-2 text-sm font-medium transition-colors ${isActive ? "bg-primary/10 text-primary border-l-2 border-primary" : "text-muted-foreground hover:bg-muted hover:text-foreground border-l-2 border-transparent"}`}>
                       <Icon className="h-4 w-4" />
                       {item.label}
                     </span>
@@ -77,9 +78,7 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
             </nav>
           </div>
         </aside>
-        <div className="flex-1 overflow-auto p-8">
-          {children}
-        </div>
+        <div className="flex-1 overflow-auto p-8">{children}</div>
       </div>
     </AppLayout>
   );

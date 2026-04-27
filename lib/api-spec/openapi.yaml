@@ -2,7 +2,7 @@ openapi: 3.1.0
 info:
   # Do not change the title, if the title changes, the import paths will be broken
   title: Api
-  version: 0.1.0
+  version: 0.2.0
   description: Datastory API specification
 servers:
   - url: /api
@@ -10,12 +10,17 @@ servers:
 tags:
   - name: health
     description: Health operations
-  - name: clients
-    description: Client management
+  - name: auth
+    description: Authentication
+  - name: companies
+    description: Company management
+  - name: franchises
+    description: Franchise management
   - name: dashboards
     description: Dashboard management
   - name: users
     description: User management
+
 paths:
   /healthz:
     get:
@@ -30,127 +35,220 @@ paths:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
 
-  /clients:
-    get:
-      operationId: listClients
-      tags: [clients]
-      summary: List all clients
+  /auth/login:
+    post:
+      operationId: login
+      tags: [auth]
+      summary: Login with email and password
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LoginBody"
       responses:
         "200":
-          description: List of clients
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthUser"
+        "401":
+          description: Invalid credentials
+
+  /auth/me:
+    get:
+      operationId: getMe
+      tags: [auth]
+      summary: Get current authenticated user
+      responses:
+        "200":
+          description: Current user
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthUser"
+        "401":
+          description: Not authenticated
+
+  /auth/logout:
+    post:
+      operationId: logout
+      tags: [auth]
+      summary: Logout
+      responses:
+        "200":
+          description: Logged out
+
+  /companies:
+    get:
+      operationId: listCompanies
+      tags: [companies]
+      summary: List all companies
+      responses:
+        "200":
+          description: List of companies
           content:
             application/json:
               schema:
                 type: array
                 items:
-                  $ref: "#/components/schemas/Client"
+                  $ref: "#/components/schemas/Company"
     post:
-      operationId: createClient
-      tags: [clients]
-      summary: Create a new client
+      operationId: createCompany
+      tags: [companies]
+      summary: Create a new company
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/CreateClientBody"
+              $ref: "#/components/schemas/CreateCompanyBody"
       responses:
         "201":
-          description: Created client
+          description: Created company
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/Client"
-        "400":
-          description: Invalid request
+                $ref: "#/components/schemas/Company"
 
-  /clients/{id}:
+  /companies/{id}:
     get:
-      operationId: getClient
-      tags: [clients]
-      summary: Get a client by ID
+      operationId: getCompany
+      tags: [companies]
+      summary: Get a company by ID
       parameters:
         - name: id
           in: path
           required: true
           schema:
-            type: integer
+            type: string
       responses:
         "200":
-          description: Client
+          description: Company
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/Client"
+                $ref: "#/components/schemas/Company"
         "404":
           description: Not found
-    patch:
-      operationId: updateClient
-      tags: [clients]
-      summary: Update a client
+    put:
+      operationId: updateCompany
+      tags: [companies]
+      summary: Update a company
       parameters:
         - name: id
           in: path
           required: true
           schema:
-            type: integer
+            type: string
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/UpdateClientBody"
+              $ref: "#/components/schemas/UpdateCompanyBody"
       responses:
         "200":
-          description: Updated client
+          description: Updated company
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/Client"
-        "404":
-          description: Not found
+                $ref: "#/components/schemas/Company"
     delete:
-      operationId: deleteClient
-      tags: [clients]
-      summary: Delete a client
+      operationId: deleteCompany
+      tags: [companies]
+      summary: Delete a company
       parameters:
         - name: id
           in: path
           required: true
           schema:
-            type: integer
+            type: string
       responses:
         "204":
           description: Deleted
-        "404":
-          description: Not found
 
-  /clients/{clientId}/dashboards:
+  /franchises:
     get:
-      operationId: listClientDashboards
-      tags: [dashboards]
-      summary: List dashboards for a client
+      operationId: listFranchises
+      tags: [franchises]
+      summary: List franchises
       parameters:
-        - name: clientId
-          in: path
-          required: true
+        - name: companyId
+          in: query
           schema:
-            type: integer
+            type: string
       responses:
         "200":
-          description: List of dashboards
+          description: List of franchises
           content:
             application/json:
               schema:
                 type: array
                 items:
-                  $ref: "#/components/schemas/Dashboard"
+                  $ref: "#/components/schemas/Franchise"
+    post:
+      operationId: createFranchise
+      tags: [franchises]
+      summary: Create a franchise
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateFranchiseBody"
+      responses:
+        "201":
+          description: Created franchise
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Franchise"
+
+  /franchises/{id}:
+    put:
+      operationId: updateFranchise
+      tags: [franchises]
+      summary: Update a franchise
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateFranchiseBody"
+      responses:
+        "200":
+          description: Updated franchise
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Franchise"
+    delete:
+      operationId: deleteFranchise
+      tags: [franchises]
+      summary: Delete a franchise
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "204":
+          description: Deleted
 
   /dashboards:
     get:
       operationId: listDashboards
       tags: [dashboards]
-      summary: List all dashboards
+      summary: List dashboards accessible to current user
       responses:
         "200":
           description: List of dashboards
@@ -177,25 +275,6 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Dashboard"
-        "400":
-          description: Invalid request
-
-  /dashboards/my:
-    get:
-      operationId: getMyDashboards
-      tags: [dashboards]
-      summary: Get dashboards for the current authenticated user
-      responses:
-        "200":
-          description: Dashboards for current user
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  $ref: "#/components/schemas/Dashboard"
-        "401":
-          description: Unauthorized
 
   /dashboards/{id}:
     get:
@@ -207,7 +286,7 @@ paths:
           in: path
           required: true
           schema:
-            type: integer
+            type: string
       responses:
         "200":
           description: Dashboard
@@ -215,9 +294,11 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Dashboard"
+        "403":
+          description: Access denied
         "404":
           description: Not found
-    patch:
+    put:
       operationId: updateDashboard
       tags: [dashboards]
       summary: Update a dashboard
@@ -226,7 +307,7 @@ paths:
           in: path
           required: true
           schema:
-            type: integer
+            type: string
       requestBody:
         required: true
         content:
@@ -240,8 +321,6 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Dashboard"
-        "404":
-          description: Not found
     delete:
       operationId: deleteDashboard
       tags: [dashboards]
@@ -251,31 +330,101 @@ paths:
           in: path
           required: true
           schema:
-            type: integer
+            type: string
       responses:
         "204":
           description: Deleted
-        "404":
-          description: Not found
 
-  /stats/overview:
+  /dashboards/{id}/users:
     get:
-      operationId: getOverviewStats
-      tags: [clients]
-      summary: Get overview statistics
+      operationId: getDashboardUsers
+      tags: [dashboards]
+      summary: Get user IDs assigned to a dashboard
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
       responses:
         "200":
-          description: Overview stats
+          description: List of user IDs
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/OverviewStats"
+                type: array
+                items:
+                  type: string
+    put:
+      operationId: setDashboardUsers
+      tags: [dashboards]
+      summary: Set users for a dashboard
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SetDashboardUsersBody"
+      responses:
+        "200":
+          description: Updated
 
-  /admin/users:
+  /dashboards/{id}/franchises:
+    get:
+      operationId: getDashboardFranchises
+      tags: [dashboards]
+      summary: Get franchise IDs assigned to a dashboard
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: List of franchise IDs
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: string
+    put:
+      operationId: setDashboardFranchises
+      tags: [dashboards]
+      summary: Set franchises for a dashboard
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SetDashboardFranchisesBody"
+      responses:
+        "200":
+          description: Updated
+
+  /users:
     get:
       operationId: listUsers
       tags: [users]
-      summary: List all Clerk users
+      summary: List users
+      parameters:
+        - name: companyId
+          in: query
+          schema:
+            type: string
       responses:
         "200":
           description: List of users
@@ -284,11 +433,11 @@ paths:
               schema:
                 type: array
                 items:
-                  $ref: "#/components/schemas/AppUser"
+                  $ref: "#/components/schemas/User"
     post:
       operationId: createUser
       tags: [users]
-      summary: Create a new user
+      summary: Create a user
       requestBody:
         required: true
         content:
@@ -301,53 +450,34 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/AppUser"
-        "400":
-          description: Invalid request
+                $ref: "#/components/schemas/User"
 
-  /admin/users/{userId}:
-    delete:
-      operationId: deleteUser
-      tags: [users]
-      summary: Delete a user
-      parameters:
-        - name: userId
-          in: path
-          required: true
-          schema:
-            type: string
-      responses:
-        "204":
-          description: Deleted
-        "404":
-          description: Not found
-
-  /admin/users/{userId}/clients:
+  /users/{id}:
     get:
-      operationId: getUserClients
+      operationId: getUser
       tags: [users]
-      summary: Get assigned clients for a user
+      summary: Get a user by ID
       parameters:
-        - name: userId
+        - name: id
           in: path
           required: true
           schema:
             type: string
       responses:
         "200":
-          description: Assigned clients
+          description: User
           content:
             application/json:
               schema:
-                type: array
-                items:
-                  $ref: "#/components/schemas/UserClientAssignment"
-    post:
-      operationId: assignClientToUser
+                $ref: "#/components/schemas/User"
+        "404":
+          description: Not found
+    put:
+      operationId: updateUser
       tags: [users]
-      summary: Assign a client to a user
+      summary: Update a user
       parameters:
-        - name: userId
+        - name: id
           in: path
           required: true
           schema:
@@ -357,271 +487,296 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/AssignClientBody"
+              $ref: "#/components/schemas/UpdateUserBody"
       responses:
-        "201":
-          description: Assignment created
+        "200":
+          description: Updated user
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/UserClientAssignment"
-        "400":
-          description: Invalid request
-
-  /admin/users/{userId}/clients/{clientId}:
+                $ref: "#/components/schemas/User"
     delete:
-      operationId: removeClientFromUser
+      operationId: deleteUser
       tags: [users]
-      summary: Remove client assignment from a user
+      summary: Delete a user
       parameters:
-        - name: userId
+        - name: id
           in: path
           required: true
           schema:
             type: string
-        - name: clientId
-          in: path
-          required: true
-          schema:
-            type: integer
       responses:
         "204":
-          description: Removed
-        "404":
-          description: Not found
+          description: Deleted
 
 components:
   schemas:
     HealthStatus:
       type: object
+      required: [status]
       properties:
         status:
           type: string
-      required:
-        - status
 
-    Client:
+    LoginBody:
       type: object
-      properties:
-        id:
-          type: integer
-        name:
-          type: string
-        slug:
-          type: string
-        logoUrl:
-          type: ["string", "null"]
-        industry:
-          type: ["string", "null"]
-        description:
-          type: ["string", "null"]
-        active:
-          type: boolean
-        createdAt:
-          type: string
-        updatedAt:
-          type: string
-      required:
-        - id
-        - name
-        - slug
-        - active
-        - createdAt
-        - updatedAt
-
-    CreateClientBody:
-      type: object
-      properties:
-        name:
-          type: string
-        slug:
-          type: string
-        logoUrl:
-          type: ["string", "null"]
-        industry:
-          type: ["string", "null"]
-        description:
-          type: ["string", "null"]
-        active:
-          type: boolean
-      required:
-        - name
-        - slug
-
-    UpdateClientBody:
-      type: object
-      properties:
-        name:
-          type: string
-        slug:
-          type: string
-        logoUrl:
-          type: ["string", "null"]
-        industry:
-          type: ["string", "null"]
-        description:
-          type: ["string", "null"]
-        active:
-          type: boolean
-
-    Dashboard:
-      type: object
-      properties:
-        id:
-          type: integer
-        clientId:
-          type: integer
-        title:
-          type: string
-        description:
-          type: ["string", "null"]
-        lookerstudioUrl:
-          type: string
-        thumbnailUrl:
-          type: ["string", "null"]
-        category:
-          type: ["string", "null"]
-        order:
-          type: integer
-        active:
-          type: boolean
-        createdAt:
-          type: string
-        updatedAt:
-          type: string
-      required:
-        - id
-        - clientId
-        - title
-        - lookerstudioUrl
-        - order
-        - active
-        - createdAt
-        - updatedAt
-
-    CreateDashboardBody:
-      type: object
-      properties:
-        clientId:
-          type: integer
-        title:
-          type: string
-        description:
-          type: ["string", "null"]
-        lookerstudioUrl:
-          type: string
-        thumbnailUrl:
-          type: ["string", "null"]
-        category:
-          type: ["string", "null"]
-        order:
-          type: integer
-        active:
-          type: boolean
-      required:
-        - clientId
-        - title
-        - lookerstudioUrl
-
-    UpdateDashboardBody:
-      type: object
-      properties:
-        clientId:
-          type: integer
-        title:
-          type: string
-        description:
-          type: ["string", "null"]
-        lookerstudioUrl:
-          type: string
-        thumbnailUrl:
-          type: ["string", "null"]
-        category:
-          type: ["string", "null"]
-        order:
-          type: integer
-        active:
-          type: boolean
-
-    OverviewStats:
-      type: object
-      properties:
-        totalClients:
-          type: integer
-        activeClients:
-          type: integer
-        totalDashboards:
-          type: integer
-        activeDashboards:
-          type: integer
-        totalUsers:
-          type: integer
-      required:
-        - totalClients
-        - activeClients
-        - totalDashboards
-        - activeDashboards
-        - totalUsers
-
-    AppUser:
-      type: object
-      properties:
-        id:
-          type: string
-        email:
-          type: string
-        firstName:
-          type: ["string", "null"]
-        lastName:
-          type: ["string", "null"]
-        createdAt:
-          type: integer
-        assignedClientIds:
-          type: array
-          items:
-            type: integer
-      required:
-        - id
-        - email
-        - createdAt
-        - assignedClientIds
-
-    CreateUserBody:
-      type: object
+      required: [email, password]
       properties:
         email:
           type: string
         password:
           type: string
-        firstName:
-          type: ["string", "null"]
-        lastName:
-          type: ["string", "null"]
-      required:
-        - email
-        - password
 
-    UserClientAssignment:
+    AuthUser:
       type: object
+      required: [id, email, firstname, lastname, role]
       properties:
         id:
-          type: integer
-        clerkUserId:
           type: string
-        clientId:
-          type: integer
+        email:
+          type: string
+        firstname:
+          type: string
+        lastname:
+          type: string
+        role:
+          type: string
+          enum: [admin, brand_admin, viewer]
+        companyId:
+          type: string
+          nullable: true
+        franchiseId:
+          type: string
+          nullable: true
+
+    Company:
+      type: object
+      required: [id, name, slug, domain, hasFranchise, createdAt]
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        slug:
+          type: string
+        domain:
+          type: string
+        hasFranchise:
+          type: boolean
+        logoUrl:
+          type: string
+          nullable: true
+        fontRegularFilename:
+          type: string
+          nullable: true
+        fontBoldFilename:
+          type: string
+          nullable: true
         createdAt:
           type: string
-      required:
-        - id
-        - clerkUserId
-        - clientId
-        - createdAt
 
-    AssignClientBody:
+    CreateCompanyBody:
+      type: object
+      required: [name, slug, domain]
+      properties:
+        name:
+          type: string
+        slug:
+          type: string
+        domain:
+          type: string
+        hasFranchise:
+          type: boolean
+        logoUrl:
+          type: string
+          nullable: true
+
+    UpdateCompanyBody:
       type: object
       properties:
-        clientId:
-          type: integer
-      required:
-        - clientId
+        name:
+          type: string
+        slug:
+          type: string
+        domain:
+          type: string
+        hasFranchise:
+          type: boolean
+        logoUrl:
+          type: string
+          nullable: true
+
+    Franchise:
+      type: object
+      required: [id, name, companyId, code, address, zipcode, createdAt]
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        companyId:
+          type: string
+        code:
+          type: string
+        address:
+          type: string
+        zipcode:
+          type: string
+        createdAt:
+          type: string
+
+    CreateFranchiseBody:
+      type: object
+      required: [name, companyId]
+      properties:
+        name:
+          type: string
+        companyId:
+          type: string
+        code:
+          type: string
+        address:
+          type: string
+        zipcode:
+          type: string
+
+    UpdateFranchiseBody:
+      type: object
+      properties:
+        name:
+          type: string
+        code:
+          type: string
+        address:
+          type: string
+        zipcode:
+          type: string
+
+    Dashboard:
+      type: object
+      required: [id, name, companyId, lookerUrl, active, createdAt]
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        companyId:
+          type: string
+        lookerUrl:
+          type: string
+        active:
+          type: boolean
+        createdAt:
+          type: string
+
+    CreateDashboardBody:
+      type: object
+      required: [name, companyId, lookerUrl]
+      properties:
+        name:
+          type: string
+        companyId:
+          type: string
+        lookerUrl:
+          type: string
+        active:
+          type: boolean
+
+    UpdateDashboardBody:
+      type: object
+      properties:
+        name:
+          type: string
+        lookerUrl:
+          type: string
+        active:
+          type: boolean
+
+    SetDashboardUsersBody:
+      type: object
+      required: [userIds]
+      properties:
+        userIds:
+          type: array
+          items:
+            type: string
+
+    SetDashboardFranchisesBody:
+      type: object
+      required: [franchiseIds]
+      properties:
+        franchiseIds:
+          type: array
+          items:
+            type: string
+
+    User:
+      type: object
+      required: [id, email, firstname, lastname, role, isActive, createdAt]
+      properties:
+        id:
+          type: string
+        email:
+          type: string
+        firstname:
+          type: string
+        lastname:
+          type: string
+        role:
+          type: string
+          enum: [admin, brand_admin, viewer]
+        companyId:
+          type: string
+          nullable: true
+        franchiseId:
+          type: string
+          nullable: true
+        isActive:
+          type: boolean
+        createdAt:
+          type: string
+
+    CreateUserBody:
+      type: object
+      required: [email, firstname, lastname, role]
+      properties:
+        email:
+          type: string
+        firstname:
+          type: string
+        lastname:
+          type: string
+        role:
+          type: string
+          enum: [admin, brand_admin, viewer]
+        password:
+          type: string
+        companyId:
+          type: string
+          nullable: true
+        franchiseId:
+          type: string
+          nullable: true
+
+    UpdateUserBody:
+      type: object
+      properties:
+        email:
+          type: string
+        firstname:
+          type: string
+        lastname:
+          type: string
+        role:
+          type: string
+          enum: [admin, brand_admin, viewer]
+        password:
+          type: string
+        companyId:
+          type: string
+          nullable: true
+        franchiseId:
+          type: string
+          nullable: true
+        isActive:
+          type: boolean

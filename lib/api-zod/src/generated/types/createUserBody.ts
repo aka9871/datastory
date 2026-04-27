@@ -3,14 +3,16 @@
  * Do not edit manually.
  * Api
  * Datastory API specification
- * OpenAPI spec version: 0.1.0
+ * OpenAPI spec version: 0.2.0
  */
+import type { CreateUserBodyRole } from "./createUserBodyRole";
 
 export interface CreateUserBody {
   email: string;
-  password: string;
-  /** @nullable */
-  firstName?: string | null;
-  /** @nullable */
-  lastName?: string | null;
+  firstname: string;
+  lastname: string;
+  role: CreateUserBodyRole;
+  password?: string;
+  companyId?: string | null;
+  franchiseId?: string | null;
 }

@@ -23,6 +23,7 @@ timeoutMs = 20000
 
 [userenv.shared]
 VITE_CLERK_PUBLISHABLE_KEY = "pk_test_bGFyZ2UtcGxhdHlwdXMtNjguY2xlcmsuYWNjb3VudHMuZGV2JA"
+JWT_SECRET = "c6d7986d535d9a11f6e14e73675b40f84d5f4d3280f24e10a4f70d7d0284a67c05473279a65c005e4cd39891b8ac48dd5215e87a55b7a75cfdc12994e13e4475"
 
 [nix]
 channel = "stable-25_05"

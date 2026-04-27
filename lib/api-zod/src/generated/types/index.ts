@@ -3,18 +3,29 @@
  * Do not edit manually.
  * Api
  * Datastory API specification
- * OpenAPI spec version: 0.1.0
+ * OpenAPI spec version: 0.2.0
  */
 
-export * from "./appUser";
-export * from "./assignClientBody";
-export * from "./client";
-export * from "./createClientBody";
+export * from "./authUser";
+export * from "./authUserRole";
+export * from "./company";
+export * from "./createCompanyBody";
 export * from "./createDashboardBody";
+export * from "./createFranchiseBody";
 export * from "./createUserBody";
+export * from "./createUserBodyRole";
 export * from "./dashboard";
+export * from "./franchise";
 export * from "./healthStatus";
-export * from "./overviewStats";
-export * from "./updateClientBody";
+export * from "./listFranchisesParams";
+export * from "./listUsersParams";
+export * from "./loginBody";
+export * from "./setDashboardFranchisesBody";
+export * from "./setDashboardUsersBody";
+export * from "./updateCompanyBody";
 export * from "./updateDashboardBody";
-export * from "./userClientAssignment";
+export * from "./updateFranchiseBody";
+export * from "./updateUserBody";
+export * from "./updateUserBodyRole";
+export * from "./user";
+export * from "./userRole";

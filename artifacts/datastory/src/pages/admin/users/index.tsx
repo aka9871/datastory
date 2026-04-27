@@ -8,7 +8,7 @@ import {
   useDeleteUser,
   getListUsersQueryKey,
 } from "@workspace/api-client-react";
-import type { User } from "@workspace/api-client-react";
+import type { User, Company } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -69,6 +69,103 @@ const emptyForm: FormState = {
   password: "",
   companyId: "",
 };
+
+type UserFormProps = {
+  form: FormState;
+  setForm: (f: FormState) => void;
+  onSubmit: (e: React.FormEvent) => void;
+  isPending: boolean;
+  isEditing: boolean;
+  companies: Company[] | undefined;
+};
+
+function UserForm({ form, setForm, onSubmit, isPending, isEditing, companies }: UserFormProps) {
+  return (
+    <form onSubmit={onSubmit} className="space-y-4">
+      <div className="grid grid-cols-2 gap-4">
+        <div className="space-y-2">
+          <Label>Prénom</Label>
+          <Input
+            value={form.firstname}
+            onChange={(e) => setForm({ ...form, firstname: e.target.value })}
+            required
+            className="rounded-none"
+          />
+        </div>
+        <div className="space-y-2">
+          <Label>Nom</Label>
+          <Input
+            value={form.lastname}
+            onChange={(e) => setForm({ ...form, lastname: e.target.value })}
+            required
+            className="rounded-none"
+          />
+        </div>
+      </div>
+      <div className="space-y-2">
+        <Label>Email</Label>
+        <Input
+          type="email"
+          value={form.email}
+          onChange={(e) => setForm({ ...form, email: e.target.value })}
+          required
+          className="rounded-none"
+        />
+      </div>
+      <div className="space-y-2">
+        <Label>Mot de passe {isEditing && "(laisser vide pour ne pas changer)"}</Label>
+        <Input
+          type="password"
+          value={form.password}
+          onChange={(e) => setForm({ ...form, password: e.target.value })}
+          className="rounded-none"
+          required={!isEditing}
+        />
+      </div>
+      <div className="space-y-2">
+        <Label>Rôle</Label>
+        <Select
+          value={form.role}
+          onValueChange={(v) => setForm({ ...form, role: v as FormState["role"] })}
+        >
+          <SelectTrigger className="rounded-none">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="admin">Admin</SelectItem>
+            <SelectItem value="brand_admin">Brand Admin</SelectItem>
+            <SelectItem value="viewer">Viewer</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+      <div className="space-y-2">
+        <Label>Entreprise</Label>
+        <Select
+          value={form.companyId || "none"}
+          onValueChange={(v) => setForm({ ...form, companyId: v === "none" ? "" : v })}
+        >
+          <SelectTrigger className="rounded-none">
+            <SelectValue placeholder="Aucune" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="none">Aucune</SelectItem>
+            {companies?.map((c) => (
+              <SelectItem key={c.id} value={c.id}>
+                {c.name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+      <DialogFooter>
+        <Button type="submit" disabled={isPending} className="rounded-none">
+          {isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+          {isEditing ? "Mettre à jour" : "Créer"}
+        </Button>
+      </DialogFooter>
+    </form>
+  );
+}
 
 export default function AdminUsers() {
   const { toast } = useToast();
@@ -170,98 +267,6 @@ export default function AdminUsers() {
       },
     );
   }
-
-  const UserForm = ({
-    onSubmit,
-    isPending,
-  }: {
-    onSubmit: (e: React.FormEvent) => void;
-    isPending: boolean;
-  }) => (
-    <form onSubmit={onSubmit} className="space-y-4">
-      <div className="grid grid-cols-2 gap-4">
-        <div className="space-y-2">
-          <Label>Prénom</Label>
-          <Input
-            value={form.firstname}
-            onChange={(e) => setForm({ ...form, firstname: e.target.value })}
-            required
-            className="rounded-none"
-          />
-        </div>
-        <div className="space-y-2">
-          <Label>Nom</Label>
-          <Input
-            value={form.lastname}
-            onChange={(e) => setForm({ ...form, lastname: e.target.value })}
-            required
-            className="rounded-none"
-          />
-        </div>
-      </div>
-      <div className="space-y-2">
-        <Label>Email</Label>
-        <Input
-          type="email"
-          value={form.email}
-          onChange={(e) => setForm({ ...form, email: e.target.value })}
-          required
-          className="rounded-none"
-        />
-      </div>
-      <div className="space-y-2">
-        <Label>Mot de passe {editingUser && "(laisser vide pour ne pas changer)"}</Label>
-        <Input
-          type="password"
-          value={form.password}
-          onChange={(e) => setForm({ ...form, password: e.target.value })}
-          className="rounded-none"
-          required={!editingUser}
-        />
-      </div>
-      <div className="space-y-2">
-        <Label>Rôle</Label>
-        <Select
-          value={form.role}
-          onValueChange={(v) => setForm({ ...form, role: v as FormState["role"] })}
-        >
-          <SelectTrigger className="rounded-none">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="admin">Admin</SelectItem>
-            <SelectItem value="brand_admin">Brand Admin</SelectItem>
-            <SelectItem value="viewer">Viewer</SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
-      <div className="space-y-2">
-        <Label>Entreprise</Label>
-        <Select
-          value={form.companyId || "none"}
-          onValueChange={(v) => setForm({ ...form, companyId: v === "none" ? "" : v })}
-        >
-          <SelectTrigger className="rounded-none">
-            <SelectValue placeholder="Aucune" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="none">Aucune</SelectItem>
-            {companies?.map((c) => (
-              <SelectItem key={c.id} value={c.id}>
-                {c.name}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
-      <DialogFooter>
-        <Button type="submit" disabled={isPending} className="rounded-none">
-          {isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-          {editingUser ? "Mettre à jour" : "Créer"}
-        </Button>
-      </DialogFooter>
-    </form>
-  );
 
   return (
     <AdminLayout>
@@ -370,7 +375,14 @@ export default function AdminUsers() {
           <DialogHeader>
             <DialogTitle>Nouvel utilisateur</DialogTitle>
           </DialogHeader>
-          <UserForm onSubmit={handleCreate} isPending={createUser.isPending} />
+          <UserForm
+            form={form}
+            setForm={setForm}
+            onSubmit={handleCreate}
+            isPending={createUser.isPending}
+            isEditing={false}
+            companies={companies}
+          />
         </DialogContent>
       </Dialog>
 
@@ -379,7 +391,14 @@ export default function AdminUsers() {
           <DialogHeader>
             <DialogTitle>Modifier l'utilisateur</DialogTitle>
           </DialogHeader>
-          <UserForm onSubmit={handleUpdate} isPending={updateUser.isPending} />
+          <UserForm
+            form={form}
+            setForm={setForm}
+            onSubmit={handleUpdate}
+            isPending={updateUser.isPending}
+            isEditing={true}
+            companies={companies}
+          />
         </DialogContent>
       </Dialog>
 

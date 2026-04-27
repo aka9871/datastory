@@ -76,6 +76,122 @@ async function uploadLogo(file: File): Promise<string> {
   return objectPath as string;
 }
 
+type CompanyFormProps = {
+  form: FormState;
+  setForm: (f: FormState) => void;
+  onSubmit: (e: React.FormEvent) => void;
+  isPending: boolean;
+  isEditing: boolean;
+  logoPreview: string | null;
+  clearLogo: () => void;
+  fileInputRef: React.RefObject<HTMLInputElement | null>;
+  handleFileChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
+};
+
+function CompanyForm({
+  form,
+  setForm,
+  onSubmit,
+  isPending,
+  isEditing,
+  logoPreview,
+  clearLogo,
+  fileInputRef,
+  handleFileChange,
+}: CompanyFormProps) {
+  return (
+    <form onSubmit={onSubmit} className="space-y-4">
+      <div className="space-y-2">
+        <Label>Nom</Label>
+        <Input
+          value={form.name}
+          onChange={(e) => {
+            const name = e.target.value;
+            const slug = name
+              .toLowerCase()
+              .replace(/[^a-z0-9]+/g, "-")
+              .replace(/^-|-$/g, "");
+            setForm({ ...form, name, slug: form.slug || slug });
+          }}
+          required
+          className="rounded-none"
+        />
+      </div>
+      <div className="space-y-2">
+        <Label>Slug</Label>
+        <Input
+          value={form.slug}
+          onChange={(e) => setForm({ ...form, slug: e.target.value })}
+          required
+          className="rounded-none"
+          placeholder="ex: mcdonalds-france"
+        />
+      </div>
+      <div className="space-y-2">
+        <Label>Domaine email</Label>
+        <Input
+          value={form.domain}
+          onChange={(e) => setForm({ ...form, domain: e.target.value })}
+          required
+          className="rounded-none"
+          placeholder="ex: mcdonalds.fr"
+        />
+      </div>
+      <div className="space-y-2">
+        <Label>Logo</Label>
+        {logoPreview ? (
+          <div className="flex items-center gap-3 p-3 border border-border bg-muted/30">
+            <img src={logoPreview} alt="Logo" className="h-10 w-auto max-w-[140px] object-contain" />
+            <button type="button" onClick={clearLogo} className="ml-auto text-muted-foreground hover:text-foreground">
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+        ) : (
+          <div
+            className="border border-dashed border-border p-4 flex flex-col items-center justify-center gap-2 cursor-pointer hover:border-primary transition-colors"
+            onClick={() => fileInputRef.current?.click()}
+          >
+            <Upload className="h-5 w-5 text-muted-foreground" />
+            <span className="text-xs text-muted-foreground">Cliquer pour uploader un PNG/JPG</span>
+          </div>
+        )}
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="image/*"
+          onChange={handleFileChange}
+          className="hidden"
+        />
+        {!logoPreview && (
+          <div className="space-y-1">
+            <span className="text-xs text-muted-foreground">Ou entrer une URL</span>
+            <Input
+              value={form.logoUrl}
+              onChange={(e) => setForm({ ...form, logoUrl: e.target.value })}
+              className="rounded-none"
+              placeholder="https://..."
+            />
+          </div>
+        )}
+      </div>
+      <div className="flex items-center gap-3">
+        <Switch
+          checked={form.hasFranchise}
+          onCheckedChange={(v) => setForm({ ...form, hasFranchise: v })}
+          id="hasFranchise"
+        />
+        <Label htmlFor="hasFranchise">Réseau de franchise</Label>
+      </div>
+      <DialogFooter>
+        <Button type="submit" disabled={isPending} className="rounded-none">
+          {isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+          {isEditing ? "Mettre à jour" : "Créer"}
+        </Button>
+      </DialogFooter>
+    </form>
+  );
+}
+
 export default function AdminCompanies() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -237,106 +353,6 @@ export default function AdminCompanies() {
   const isPendingForm =
     createCompany.isPending || updateCompany.isPending || isUploading;
 
-  const CompanyForm = ({
-    onSubmit,
-  }: {
-    onSubmit: (e: React.FormEvent) => void;
-  }) => (
-    <form onSubmit={onSubmit} className="space-y-4">
-      <div className="space-y-2">
-        <Label>Nom</Label>
-        <Input
-          value={form.name}
-          onChange={(e) => {
-            const name = e.target.value;
-            const slug = name
-              .toLowerCase()
-              .replace(/[^a-z0-9]+/g, "-")
-              .replace(/^-|-$/g, "");
-            setForm({ ...form, name, slug: form.slug || slug });
-          }}
-          required
-          className="rounded-none"
-        />
-      </div>
-      <div className="space-y-2">
-        <Label>Slug</Label>
-        <Input
-          value={form.slug}
-          onChange={(e) => setForm({ ...form, slug: e.target.value })}
-          required
-          className="rounded-none"
-          placeholder="ex: mcdonalds-france"
-        />
-      </div>
-      <div className="space-y-2">
-        <Label>Domaine email</Label>
-        <Input
-          value={form.domain}
-          onChange={(e) => setForm({ ...form, domain: e.target.value })}
-          required
-          className="rounded-none"
-          placeholder="ex: mcdonalds.fr"
-        />
-      </div>
-
-      <div className="space-y-2">
-        <Label>Logo</Label>
-        {logoPreview ? (
-          <div className="flex items-center gap-3 p-3 border border-border bg-muted/30">
-            <img src={logoPreview} alt="Logo" className="h-10 w-auto max-w-[140px] object-contain" />
-            <button type="button" onClick={clearLogo} className="ml-auto text-muted-foreground hover:text-foreground">
-              <X className="h-4 w-4" />
-            </button>
-          </div>
-        ) : (
-          <div className="flex gap-2">
-            <div
-              className="flex-1 border border-dashed border-border p-4 flex flex-col items-center justify-center gap-2 cursor-pointer hover:border-primary transition-colors"
-              onClick={() => fileInputRef.current?.click()}
-            >
-              <Upload className="h-5 w-5 text-muted-foreground" />
-              <span className="text-xs text-muted-foreground">Cliquer pour uploader un PNG/JPG</span>
-            </div>
-          </div>
-        )}
-        <input
-          ref={fileInputRef}
-          type="file"
-          accept="image/*"
-          onChange={handleFileChange}
-          className="hidden"
-        />
-        {!logoPreview && (
-          <div className="space-y-1">
-            <span className="text-xs text-muted-foreground">Ou entrer une URL</span>
-            <Input
-              value={form.logoUrl}
-              onChange={(e) => setForm({ ...form, logoUrl: e.target.value })}
-              className="rounded-none"
-              placeholder="https://..."
-            />
-          </div>
-        )}
-      </div>
-
-      <div className="flex items-center gap-3">
-        <Switch
-          checked={form.hasFranchise}
-          onCheckedChange={(v) => setForm({ ...form, hasFranchise: v })}
-          id="hasFranchise"
-        />
-        <Label htmlFor="hasFranchise">Réseau de franchise</Label>
-      </div>
-      <DialogFooter>
-        <Button type="submit" disabled={isPendingForm} className="rounded-none">
-          {isPendingForm && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-          {editingCompany ? "Mettre à jour" : "Créer"}
-        </Button>
-      </DialogFooter>
-    </form>
-  );
-
   return (
     <AdminLayout>
       <div className="mb-8 flex justify-between items-end">
@@ -453,7 +469,17 @@ export default function AdminCompanies() {
           <DialogHeader>
             <DialogTitle>Nouvelle entreprise</DialogTitle>
           </DialogHeader>
-          <CompanyForm onSubmit={handleCreate} />
+          <CompanyForm
+            form={form}
+            setForm={setForm}
+            onSubmit={handleCreate}
+            isPending={isPendingForm}
+            isEditing={false}
+            logoPreview={logoPreview}
+            clearLogo={clearLogo}
+            fileInputRef={fileInputRef}
+            handleFileChange={handleFileChange}
+          />
         </DialogContent>
       </Dialog>
 
@@ -465,7 +491,17 @@ export default function AdminCompanies() {
           <DialogHeader>
             <DialogTitle>Modifier l'entreprise</DialogTitle>
           </DialogHeader>
-          <CompanyForm onSubmit={handleUpdate} />
+          <CompanyForm
+            form={form}
+            setForm={setForm}
+            onSubmit={handleUpdate}
+            isPending={isPendingForm}
+            isEditing={true}
+            logoPreview={logoPreview}
+            clearLogo={clearLogo}
+            fileInputRef={fileInputRef}
+            handleFileChange={handleFileChange}
+          />
         </DialogContent>
       </Dialog>
 

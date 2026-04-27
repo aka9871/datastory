@@ -1,0 +1,164 @@
+	
+Boolean
+Yes
+Permet de créer une table franchise affiliée à la marque si besoin
+SSO
+Boolean
+Yes 
+ 
+SSO List
+List
+No
+Si le SSO est définit la solution doit être sélectionnée dans la liste.
+Logo
+Img
+Yes
+Utiliser pour les mails et le front, sans doute besoin de spécifier différents formats Ju
+Font
+File
+No
+Prévoir l’upload de fichier woff2 uniquement
+Domain
+Url
+No
+Si besoin d’avoir un domain spécifique pour duplication du parcours.
+ 
+1.2- Franchise : 
+
+ 
+Champs
+Type
+Mandatory
+Descriptions
+Nom
+Text
+Yes
+-
+Company
+List 
+Yes
+Attribuer la franchise à company.
+Code ?
+Int
+No
+ 
+Address
+Text
+No
+ 
+zipcode
+Int
+No
+ 
+ 
+ 
+ 
+ 
+
+A voir si on rapproche les url looker ici, plutot que dans la table users, mais je la laisserais dans user.
+ 
+1.3 - Users : 
+
+Ici les informations requise pour la création de compte utilisateurs : 
+ 
+Champs
+Type
+Mandatory
+Descriptions
+Nom
+Text
+Yes
+-
+Prénom
+Text
+Yes
+-
+Company
+List 
+Yes
+La liste des company est à récupérer dans la base de donnée, si l’entreprise n’est pas disponible on peut en ajouter une nouvelle via un clic sur le CTA “Créer une entreprise”, qui redirige sur page adéquate.
+Franchise/store
+List
+No
+Permet d’affilier un user à une franchise, filtrer par company.
+SSO
+Boolean 
+Yes
+Permet de définir l’interface de connexion du Users.
+Rôle
+List
+Yes
+Voir sections rôles
+Looker Url
+List
+Yes
+On doit pouvoir ajouter plusieurs URLs à un user (en fonction de son role user ou franchise)
+1.4 - SSO : 
+
+ 
+Doit permettre de configurer les différentes configurations SSO, par solutions/company : 
+ 
+Champs
+Type
+Mandatory
+Descriptions
+Name
+Text
+Yes
+Nom de la solution
+Company
+List
+Yes
+Permet d’assigner un SSO à une company
+Domain_url
+Url
+Yes
+Domain SSO du client
+Client ID
+Text
+No
+Depend de la solution
+Client Secret
+Text
+No
+Depend de la solution
+? Private key ou autre ? 
+File
+No
+Depend de la solution
+Callback_url
+Url
+Yes
+Utiliser pour rediriger le user une fois le login validé.
+ 
+2 - Les rôles : 
+
+ 
+Rôles
+Permissions
+Paramètres
+Commentaires
+Admin
+Ecriture / Lecture 
+Doit pouvoir changer son mot de passe et son email de contact.
+Dois pouvoir agir sur tous les comptes.
+User pour le back office, permettant de créer / supprimer toutes les entités.
+Admin_brand
+Ecriture / Lecture 
+Doit pouvoir changer son mot de passe et son email de contact.
+Doit pouvoir modifier les informations des comptes qu’il a crée : Nom/Prénom/Email/Permission
+Dois pouvoir supprimer un compte qu’il a crée.
+User pour le back office, permettant de créer / supprimer les entités, sur une marque/company en particulier.
+ 
+L’admin_brand doit définir les vues disponibles pour les comptes : 
+User_Franchise : Vue Franchise, permettant d’afficher/gérer plusieurs liens looker.
+User_Brand : Vue User, permettant d'afficher un graph looker.
+User_Franchise
+Lecture
+Doit pouvoir changer son mot de passe et son email de contact
+Lecture sur le/les dashboard attribués, ne peut pas accéder à des dashboard qui ne sont pas affiliés à sa company
+User_brand
+Lecture
+Doit pouvoir changer son mot de passe et son email de contact
+Lecture sur le dashboard attribué, ne peut pas accéder à des dashboard qui ne sont pas affiliés à sa company
+ 

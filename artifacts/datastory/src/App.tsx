@@ -49,6 +49,8 @@ function AppRoutes() {
       <Switch>
         <Route path="/" component={HomeRedirect} />
         <Route path="/login" component={Login} />
+        <Route path="/sign-in"><Redirect to="/login" /></Route>
+        <Route path="/sign-up"><Redirect to="/login" /></Route>
         
         <Route path="/dashboards">
           <ProtectedRoute component={Dashboards} />

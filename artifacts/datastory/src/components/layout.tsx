@@ -2,6 +2,7 @@ import { Link, useLocation } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { LayoutDashboard, Users, BarChart3, LogOut, Building2 } from "lucide-react";
+import bbdoLogo from "/bbdo-logo.png";
 
 export function AppLayout({ children }: { children: React.ReactNode }) {
   const { user, logout } = useAuth();
@@ -11,8 +12,11 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
     <div className="min-h-screen flex flex-col bg-background">
       <header className="h-16 border-b border-border flex items-center justify-between px-6 bg-card shrink-0">
         <div className="flex items-center gap-8">
-          <Link href="/dashboards" className="font-serif font-bold text-xl tracking-tight">
-            DATA<span className="text-primary">STORY</span>
+          <Link href="/dashboards" className="flex flex-col items-start leading-none gap-0.5">
+            <span className="font-serif font-bold text-lg tracking-tight">
+              DATA<span className="text-primary">STORY</span>
+            </span>
+            <img src={bbdoLogo} alt="BBDO Paris" className="h-3.5 w-auto opacity-70" />
           </Link>
 
           <nav className="hidden md:flex items-center gap-6">

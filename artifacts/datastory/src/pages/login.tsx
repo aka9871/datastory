@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import type { AuthUser } from "@workspace/api-client-react";
+import bbdoLogo from "/bbdo-logo.png";
 
 export default function Login() {
   const [email, setEmail] = useState("");
@@ -45,11 +46,12 @@ export default function Login() {
   return (
     <div className="min-h-[100dvh] flex items-center justify-center bg-background px-4">
       <div className="w-full max-w-[400px]">
-        <div className="mb-10 text-center">
+        <div className="mb-10 text-center flex flex-col items-center gap-2">
           <span className="font-serif font-bold text-3xl tracking-tight">
             DATA<span className="text-primary">STORY</span>
           </span>
-          <p className="text-muted-foreground mt-2 text-sm">
+          <img src={bbdoLogo} alt="BBDO Paris" className="h-4 w-auto opacity-60" />
+          <p className="text-muted-foreground text-sm mt-2">
             Connectez-vous à votre espace client
           </p>
         </div>

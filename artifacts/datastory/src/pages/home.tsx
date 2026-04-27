@@ -1,16 +1,20 @@
 import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
+import bbdoLogo from "/bbdo-logo.png";
 
 export default function Home() {
   return (
     <div className="min-h-screen bg-background text-foreground flex flex-col">
-      <header className="px-8 py-6 flex items-center justify-between border-b border-border">
-        <div className="font-serif font-bold text-2xl tracking-tight">
-          DATA<span className="text-primary">STORY</span>
+      <header className="px-8 py-5 flex items-center justify-between border-b border-border">
+        <div className="flex flex-col items-start leading-none gap-0.5">
+          <span className="font-serif font-bold text-xl tracking-tight">
+            DATA<span className="text-primary">STORY</span>
+          </span>
+          <img src={bbdoLogo} alt="BBDO Paris" className="h-3.5 w-auto opacity-60" />
         </div>
         <div className="flex items-center gap-4">
-          <Link href="/sign-in">
-            <Button className="font-medium">Sign In</Button>
+          <Link href="/login">
+            <Button className="font-medium rounded-none">Sign In</Button>
           </Link>
         </div>
       </header>
@@ -25,8 +29,8 @@ export default function Home() {
         <p className="text-lg md:text-xl text-muted-foreground mb-10 max-w-2xl mx-auto">
           Datastory is the premium client portal by BBDO Paris. Discover, explore, and analyze your curated data dashboards with unprecedented clarity.
         </p>
-        <Link href="/sign-in">
-          <Button size="lg" className="h-14 px-8 text-lg">
+        <Link href="/login">
+          <Button size="lg" className="h-14 px-8 text-lg rounded-none">
             Access Portal
           </Button>
         </Link>

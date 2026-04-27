@@ -5,6 +5,7 @@ import companiesRouter from "./companies";
 import franchisesRouter from "./franchises";
 import dashboardsRouter from "./dashboards";
 import usersRouter from "./users";
+import storageRouter from "./storage";
 
 const router: IRouter = Router();
 
@@ -14,5 +15,6 @@ router.use(companiesRouter);
 router.use(franchisesRouter);
 router.use(dashboardsRouter);
 router.use(usersRouter);
+router.use(storageRouter);
 
 export default router;

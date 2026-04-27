@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { AdminLayout } from "@/components/layout";
 import {
   useListCompanies,
@@ -29,9 +29,15 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Plus, Trash2, Pencil, Loader2, LayoutDashboard } from "lucide-react";
+import { Plus, Trash2, Pencil, Loader2, LayoutDashboard, Upload, X } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Link } from "wouter";
+
+function getLogoSrc(logoUrl: string | null | undefined): string | null {
+  if (!logoUrl) return null;
+  if (logoUrl.startsWith("http")) return logoUrl;
+  return `/api/storage${logoUrl}`;
+}
 
 type FormState = {
   name: string;
@@ -49,6 +55,27 @@ const emptyForm: FormState = {
   logoUrl: "",
 };
 
+async function uploadLogo(file: File): Promise<string> {
+  const token = localStorage.getItem("datastory_token");
+  const urlRes = await fetch("/api/storage/uploads/request-url", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    body: JSON.stringify({ name: file.name, size: file.size, contentType: file.type }),
+  });
+  if (!urlRes.ok) throw new Error("Impossible d'obtenir l'URL d'upload");
+  const { uploadURL, objectPath } = await urlRes.json();
+  const putRes = await fetch(uploadURL, {
+    method: "PUT",
+    body: file,
+    headers: { "Content-Type": file.type },
+  });
+  if (!putRes.ok) throw new Error("Échec de l'upload du logo");
+  return objectPath as string;
+}
+
 export default function AdminCompanies() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -62,6 +89,10 @@ export default function AdminCompanies() {
   const [editingCompany, setEditingCompany] = useState<Company | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<Company | null>(null);
   const [form, setForm] = useState<FormState>(emptyForm);
+  const [logoFile, setLogoFile] = useState<File | null>(null);
+  const [logoPreview, setLogoPreview] = useState<string | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   function invalidate() {
     queryClient.invalidateQueries({ queryKey: getListCompaniesQueryKey() });
@@ -69,6 +100,8 @@ export default function AdminCompanies() {
 
   function openCreate() {
     setForm(emptyForm);
+    setLogoFile(null);
+    setLogoPreview(null);
     setCreateOpen(true);
   }
 
@@ -80,11 +113,53 @@ export default function AdminCompanies() {
       hasFranchise: company.hasFranchise,
       logoUrl: company.logoUrl ?? "",
     });
+    setLogoFile(null);
+    setLogoPreview(getLogoSrc(company.logoUrl));
     setEditingCompany(company);
   }
 
-  function handleCreate(e: React.FormEvent) {
+  function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith("image/")) {
+      toast({ title: "Format invalide", description: "Sélectionnez une image (PNG, JPG…)", variant: "destructive" });
+      return;
+    }
+    setLogoFile(file);
+    setLogoPreview(URL.createObjectURL(file));
+  }
+
+  function clearLogo() {
+    setLogoFile(null);
+    setLogoPreview(null);
+    setForm((f) => ({ ...f, logoUrl: "" }));
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  }
+
+  async function resolveLogoUrl(): Promise<string | null> {
+    if (logoFile) {
+      setIsUploading(true);
+      try {
+        const path = await uploadLogo(logoFile);
+        setIsUploading(false);
+        return path;
+      } catch (err) {
+        setIsUploading(false);
+        toast({ title: "Erreur lors de l'upload du logo", variant: "destructive" });
+        throw err;
+      }
+    }
+    return form.logoUrl || null;
+  }
+
+  async function handleCreate(e: React.FormEvent) {
     e.preventDefault();
+    let logoUrl: string | null;
+    try {
+      logoUrl = await resolveLogoUrl();
+    } catch {
+      return;
+    }
     createCompany.mutate(
       {
         data: {
@@ -92,13 +167,15 @@ export default function AdminCompanies() {
           slug: form.slug,
           domain: form.domain,
           hasFranchise: form.hasFranchise,
-          logoUrl: form.logoUrl || null,
+          logoUrl,
         },
       },
       {
         onSuccess: () => {
           toast({ title: "Entreprise créée" });
           setCreateOpen(false);
+          setLogoFile(null);
+          setLogoPreview(null);
           invalidate();
         },
         onError: () =>
@@ -107,9 +184,15 @@ export default function AdminCompanies() {
     );
   }
 
-  function handleUpdate(e: React.FormEvent) {
+  async function handleUpdate(e: React.FormEvent) {
     e.preventDefault();
     if (!editingCompany) return;
+    let logoUrl: string | null;
+    try {
+      logoUrl = await resolveLogoUrl();
+    } catch {
+      return;
+    }
     updateCompany.mutate(
       {
         id: editingCompany.id,
@@ -118,13 +201,15 @@ export default function AdminCompanies() {
           slug: form.slug,
           domain: form.domain,
           hasFranchise: form.hasFranchise,
-          logoUrl: form.logoUrl || null,
+          logoUrl,
         },
       },
       {
         onSuccess: () => {
           toast({ title: "Entreprise mise à jour" });
           setEditingCompany(null);
+          setLogoFile(null);
+          setLogoPreview(null);
           invalidate();
         },
         onError: () =>
@@ -144,20 +229,18 @@ export default function AdminCompanies() {
           invalidate();
         },
         onError: () =>
-          toast({
-            title: "Erreur lors de la suppression",
-            variant: "destructive",
-          }),
+          toast({ title: "Erreur lors de la suppression", variant: "destructive" }),
       },
     );
   }
 
+  const isPendingForm =
+    createCompany.isPending || updateCompany.isPending || isUploading;
+
   const CompanyForm = ({
     onSubmit,
-    isPending,
   }: {
     onSubmit: (e: React.FormEvent) => void;
-    isPending: boolean;
   }) => (
     <form onSubmit={onSubmit} className="space-y-4">
       <div className="space-y-2">
@@ -196,15 +279,47 @@ export default function AdminCompanies() {
           placeholder="ex: mcdonalds.fr"
         />
       </div>
+
       <div className="space-y-2">
-        <Label>URL Logo</Label>
-        <Input
-          value={form.logoUrl}
-          onChange={(e) => setForm({ ...form, logoUrl: e.target.value })}
-          className="rounded-none"
-          placeholder="https://..."
+        <Label>Logo</Label>
+        {logoPreview ? (
+          <div className="flex items-center gap-3 p-3 border border-border bg-muted/30">
+            <img src={logoPreview} alt="Logo" className="h-10 w-auto max-w-[140px] object-contain" />
+            <button type="button" onClick={clearLogo} className="ml-auto text-muted-foreground hover:text-foreground">
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+        ) : (
+          <div className="flex gap-2">
+            <div
+              className="flex-1 border border-dashed border-border p-4 flex flex-col items-center justify-center gap-2 cursor-pointer hover:border-primary transition-colors"
+              onClick={() => fileInputRef.current?.click()}
+            >
+              <Upload className="h-5 w-5 text-muted-foreground" />
+              <span className="text-xs text-muted-foreground">Cliquer pour uploader un PNG/JPG</span>
+            </div>
+          </div>
+        )}
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="image/*"
+          onChange={handleFileChange}
+          className="hidden"
         />
+        {!logoPreview && (
+          <div className="space-y-1">
+            <span className="text-xs text-muted-foreground">Ou entrer une URL</span>
+            <Input
+              value={form.logoUrl}
+              onChange={(e) => setForm({ ...form, logoUrl: e.target.value })}
+              className="rounded-none"
+              placeholder="https://..."
+            />
+          </div>
+        )}
       </div>
+
       <div className="flex items-center gap-3">
         <Switch
           checked={form.hasFranchise}
@@ -214,8 +329,8 @@ export default function AdminCompanies() {
         <Label htmlFor="hasFranchise">Réseau de franchise</Label>
       </div>
       <DialogFooter>
-        <Button type="submit" disabled={isPending} className="rounded-none">
-          {isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+        <Button type="submit" disabled={isPendingForm} className="rounded-none">
+          {isPendingForm && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
           {editingCompany ? "Mettre à jour" : "Créer"}
         </Button>
       </DialogFooter>
@@ -250,6 +365,7 @@ export default function AdminCompanies() {
           <Table>
             <TableHeader>
               <TableRow className="border-border">
+                <TableHead>Logo</TableHead>
                 <TableHead>Nom</TableHead>
                 <TableHead>Slug</TableHead>
                 <TableHead>Domaine</TableHead>
@@ -261,57 +377,71 @@ export default function AdminCompanies() {
               {companies?.length === 0 ? (
                 <TableRow>
                   <TableCell
-                    colSpan={5}
+                    colSpan={6}
                     className="text-center text-muted-foreground py-8"
                   >
                     Aucune entreprise
                   </TableCell>
                 </TableRow>
               ) : (
-                companies?.map((company) => (
-                  <TableRow key={company.id} className="border-border">
-                    <TableCell className="font-medium">{company.name}</TableCell>
-                    <TableCell className="text-muted-foreground text-sm">
-                      {company.slug}
-                    </TableCell>
-                    <TableCell className="text-muted-foreground text-sm">
-                      {company.domain}
-                    </TableCell>
-                    <TableCell className="text-muted-foreground text-sm">
-                      {company.hasFranchise ? "Oui" : "Non"}
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex gap-1 justify-end">
-                        <Link href={`/admin/companies/${company.id}/dashboards`}>
+                companies?.map((company) => {
+                  const logoSrc = getLogoSrc(company.logoUrl);
+                  return (
+                    <TableRow key={company.id} className="border-border">
+                      <TableCell>
+                        {logoSrc ? (
+                          <img
+                            src={logoSrc}
+                            alt={company.name}
+                            className="h-7 w-auto max-w-[80px] object-contain"
+                          />
+                        ) : (
+                          <span className="text-xs text-muted-foreground/40">—</span>
+                        )}
+                      </TableCell>
+                      <TableCell className="font-medium">{company.name}</TableCell>
+                      <TableCell className="text-muted-foreground text-sm">
+                        {company.slug}
+                      </TableCell>
+                      <TableCell className="text-muted-foreground text-sm">
+                        {company.domain}
+                      </TableCell>
+                      <TableCell className="text-muted-foreground text-sm">
+                        {company.hasFranchise ? "Oui" : "Non"}
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex gap-1 justify-end">
+                          <Link href={`/admin/companies/${company.id}/dashboards`}>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8"
+                              title="Dashboards"
+                            >
+                              <LayoutDashboard className="h-3.5 w-3.5" />
+                            </Button>
+                          </Link>
                           <Button
                             variant="ghost"
                             size="icon"
                             className="h-8 w-8"
-                            title="Dashboards"
+                            onClick={() => openEdit(company)}
                           >
-                            <LayoutDashboard className="h-3.5 w-3.5" />
+                            <Pencil className="h-3.5 w-3.5" />
                           </Button>
-                        </Link>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8"
-                          onClick={() => openEdit(company)}
-                        >
-                          <Pencil className="h-3.5 w-3.5" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8 text-destructive hover:text-destructive"
-                          onClick={() => setDeleteTarget(company)}
-                        >
-                          <Trash2 className="h-3.5 w-3.5" />
-                        </Button>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 text-destructive hover:text-destructive"
+                            onClick={() => setDeleteTarget(company)}
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })
               )}
             </TableBody>
           </Table>
@@ -323,7 +453,7 @@ export default function AdminCompanies() {
           <DialogHeader>
             <DialogTitle>Nouvelle entreprise</DialogTitle>
           </DialogHeader>
-          <CompanyForm onSubmit={handleCreate} isPending={createCompany.isPending} />
+          <CompanyForm onSubmit={handleCreate} />
         </DialogContent>
       </Dialog>
 
@@ -335,10 +465,7 @@ export default function AdminCompanies() {
           <DialogHeader>
             <DialogTitle>Modifier l'entreprise</DialogTitle>
           </DialogHeader>
-          <CompanyForm
-            onSubmit={handleUpdate}
-            isPending={updateCompany.isPending}
-          />
+          <CompanyForm onSubmit={handleUpdate} />
         </DialogContent>
       </Dialog>
 

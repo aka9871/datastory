@@ -1,8 +1,16 @@
 import { useRoute, Link } from "wouter";
-import { getDashboard } from "@workspace/api-client-react";
+import { getDashboard, getListCompaniesQueryKey } from "@workspace/api-client-react";
 import { useQuery } from "@tanstack/react-query";
 import { ArrowLeft, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useListCompanies } from "@workspace/api-client-react";
+import bbdoLogo from "/bbdo-logo.png";
+
+function getLogoSrc(logoUrl: string | null | undefined): string | null {
+  if (!logoUrl) return null;
+  if (logoUrl.startsWith("http")) return logoUrl;
+  return `/api/storage${logoUrl}`;
+}
 
 export default function DashboardViewer() {
   const [, params] = useRoute("/dashboards/:id");
@@ -13,6 +21,10 @@ export default function DashboardViewer() {
     queryFn: () => getDashboard(id!),
     enabled: !!id,
   });
+
+  const { data: companies } = useListCompanies();
+  const company = companies?.find((c) => c.id === dashboard?.companyId);
+  const logoSrc = getLogoSrc(company?.logoUrl);
 
   if (isLoading) {
     return (
@@ -50,13 +62,23 @@ export default function DashboardViewer() {
               <ArrowLeft className="h-4 w-4" />
             </Button>
           </Link>
-          <div className="flex flex-col">
-            <h1 className="text-sm font-semibold leading-none">{dashboard.name}</h1>
+          <div className="flex items-center gap-3">
+            {logoSrc && (
+              <img
+                src={logoSrc}
+                alt={company?.name ?? ""}
+                className="h-7 w-auto max-w-[120px] object-contain"
+              />
+            )}
+            <div className="flex flex-col">
+              <h1 className="text-sm font-semibold leading-none">{dashboard.name}</h1>
+              {company && !logoSrc && (
+                <span className="text-xs text-muted-foreground mt-0.5">{company.name}</span>
+              )}
+            </div>
           </div>
         </div>
-        <div className="font-serif font-bold text-lg tracking-tight text-muted-foreground/30">
-          DATA<span className="text-primary/50">STORY</span>
-        </div>
+        <img src={bbdoLogo} alt="BBDO Paris" className="h-5 w-auto opacity-40" />
       </header>
 
       <main className="flex-1 w-full bg-black">

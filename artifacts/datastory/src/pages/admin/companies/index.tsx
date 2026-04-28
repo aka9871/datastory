@@ -51,33 +51,34 @@ const emptyForm: FormState = {
   logoUrl: "",
 };
 
+async function fileToBase64(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const result = reader.result as string;
+      resolve(result.split(",")[1]);
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
 async function uploadLogo(file: File): Promise<string> {
   const base = import.meta.env.BASE_URL.replace(/\/$/, "");
   const token = localStorage.getItem("datastory_token");
-  const urlRes = await fetch(`${base}/api/storage/uploads/request-url`, {
+  const fileData = await fileToBase64(file);
+  const res = await fetch(`${base}/api/storage/uploads/request-url`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
     },
-    body: JSON.stringify({ name: file.name, size: file.size, contentType: file.type }),
+    body: JSON.stringify({ name: file.name, size: file.size, contentType: file.type, file: fileData }),
   });
-  if (!urlRes.ok) throw new Error("Impossible d'obtenir l'URL d'upload");
-  const { uploadURL, objectPath, uploadMethod = "PUT", directUpload = false } = await urlRes.json();
-
-  if (directUpload) {
-    const form = new FormData();
-    form.append("file", file);
-    const uploadRes = await fetch(uploadURL, {
-      method: "POST",
-      headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}) },
-      body: form,
-    });
-    if (!uploadRes.ok) throw new Error("Échec de l'upload du logo");
-    const { objectPath: path } = await uploadRes.json();
-    return path as string;
-  }
-
+  if (!res.ok) throw new Error("Échec de l'upload du logo");
+  const data = await res.json();
+  if (data.done) return data.objectPath as string;
+  const { uploadURL, objectPath, uploadMethod = "PUT" } = data;
   const putRes = await fetch(uploadURL, {
     method: uploadMethod,
     body: file,

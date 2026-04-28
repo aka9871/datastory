@@ -43,9 +43,23 @@ router.post("/storage/uploads/request-url", requireAuth, async (req: Request, re
 
   try {
     if (!isReplit) {
-      const basePath = (process.env.BASE_PATH || "").replace(/\/$/, "");
-      const uploadURL = `${basePath}/api/storage/direct-upload`;
-      res.json({ uploadURL, directUpload: true, metadata: { name, size, contentType } });
+      const { file: fileData } = req.body ?? {};
+      if (fileData) {
+        const ext = name.includes(".") ? name.split(".").pop()!.toLowerCase() : "bin";
+        const filename = `${randomUUID()}.${ext}`;
+        const buffer = Buffer.from(fileData, "base64");
+        const { writeFileSync } = await import("fs");
+        const { resolve } = await import("path");
+        const uploadsDir = process.env.LOCAL_UPLOADS_DIR
+          ? resolve(process.env.LOCAL_UPLOADS_DIR)
+          : resolve(process.cwd(), "uploads");
+        if (!existsSync(uploadsDir)) mkdirSync(uploadsDir, { recursive: true });
+        writeFileSync(resolve(uploadsDir, filename), buffer);
+        const objectPath = `/objects/${filename}`;
+        res.json({ objectPath, done: true });
+        return;
+      }
+      res.json({ inlineUpload: true, metadata: { name, size, contentType } });
       return;
     }
 

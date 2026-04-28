@@ -24,8 +24,8 @@ router.post("/storage/uploads/request-url", requireAuth, async (req: Request, re
 
   try {
     if (!isReplit) {
-      const baseUrl = getBaseUrl(req);
-      const uploadURL = localStore.getObjectEntityUploadURL(baseUrl);
+      const basePath = process.env.BASE_PATH || "";
+      const uploadURL = localStore.getObjectEntityUploadURL(basePath);
       const objectPath = localStore.normalizeObjectEntityPath(uploadURL);
       res.json({ uploadURL, objectPath, metadata: { name, size, contentType } });
       return;

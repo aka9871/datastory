@@ -14,15 +14,15 @@ function ensureUploadsDir() {
 }
 
 export class LocalStorageService {
-  getObjectEntityUploadURL(baseUrl: string): string {
+  getObjectEntityUploadURL(basePath: string): string {
     ensureUploadsDir();
     const uuid = randomUUID();
-    return `${baseUrl}/api/storage/local-upload/${uuid}`;
+    const base = basePath.replace(/\/$/, "");
+    return `${base}/api/storage/local-upload/${uuid}`;
   }
 
   normalizeObjectEntityPath(uploadURL: string): string {
-    const url = new URL(uploadURL);
-    const parts = url.pathname.split("/");
+    const parts = uploadURL.split("/");
     const uuid = parts[parts.length - 1];
     return `/objects/${uuid}`;
   }

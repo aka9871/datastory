@@ -27,7 +27,7 @@ router.post("/storage/uploads/request-url", requireAuth, async (req: Request, re
       const basePath = process.env.BASE_PATH || "";
       const uploadURL = localStore.getObjectEntityUploadURL(basePath);
       const objectPath = localStore.normalizeObjectEntityPath(uploadURL);
-      res.json({ uploadURL, objectPath, metadata: { name, size, contentType } });
+      res.json({ uploadURL, objectPath, uploadMethod: "POST", metadata: { name, size, contentType } });
       return;
     }
 
@@ -41,7 +41,7 @@ router.post("/storage/uploads/request-url", requireAuth, async (req: Request, re
   }
 });
 
-router.put("/storage/local-upload/:uuid", async (req: Request, res: Response) => {
+router.post("/storage/local-upload/:uuid", async (req: Request, res: Response) => {
   const { uuid } = req.params;
   const contentType = req.headers["content-type"] || "application/octet-stream";
   try {

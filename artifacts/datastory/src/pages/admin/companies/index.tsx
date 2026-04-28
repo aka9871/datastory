@@ -63,9 +63,9 @@ async function uploadLogo(file: File): Promise<string> {
     body: JSON.stringify({ name: file.name, size: file.size, contentType: file.type }),
   });
   if (!urlRes.ok) throw new Error("Impossible d'obtenir l'URL d'upload");
-  const { uploadURL, objectPath } = await urlRes.json();
+  const { uploadURL, objectPath, uploadMethod = "PUT" } = await urlRes.json();
   const putRes = await fetch(uploadURL, {
-    method: "PUT",
+    method: uploadMethod,
     body: file,
     headers: { "Content-Type": file.type },
   });

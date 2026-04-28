@@ -327,7 +327,8 @@ export async function customFetch<T = unknown>(
   options: CustomFetchOptions = {},
 ): Promise<T> {
   input = applyBaseUrl(input);
-  const { responseType = "auto", headers: headersInit, ...init } = options;
+  const { responseType = "auto", headers: headersInit, ...initBase } = options;
+  let init = initBase as Omit<CustomFetchOptions, "responseType" | "headers">;
 
   const method = resolveMethod(input, init.method);
 
@@ -360,7 +361,19 @@ export async function customFetch<T = unknown>(
 
   const requestInfo = { method, url: resolveUrl(input) };
 
-  const response = await fetch(input, { ...init, method, headers });
+  // Akamai and some WAFs block DELETE and PUT — send them as POST with override header
+  const BLOCKED_METHODS = new Set(["DELETE", "PUT"]);
+  let sendMethod = method;
+  if (BLOCKED_METHODS.has(method)) {
+    sendMethod = "POST";
+    headers.set("X-HTTP-Method-Override", method);
+    if (!init.body) {
+      headers.set("content-type", "application/json");
+      init = { ...init, body: "{}" };
+    }
+  }
+
+  const response = await fetch(input, { ...init, method: sendMethod, headers });
 
   if (!response.ok) {
     const errorData = await parseErrorBody(response, method);

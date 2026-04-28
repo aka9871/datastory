@@ -32,6 +32,18 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
 
+// Restore DELETE/PUT sent as POST by clients behind WAFs that block those methods
+app.use((req, _res, next) => {
+  const override = req.headers["x-http-method-override"];
+  if (req.method === "POST" && typeof override === "string") {
+    const upper = override.toUpperCase();
+    if (upper === "DELETE" || upper === "PUT" || upper === "PATCH") {
+      req.method = upper;
+    }
+  }
+  next();
+});
+
 app.use("/api", router);
 
 export default app;

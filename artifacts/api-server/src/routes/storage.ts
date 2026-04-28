@@ -1,10 +1,19 @@
 import { Router, type IRouter, type Request, type Response } from "express";
 import { Readable } from "stream";
 import { ObjectStorageService, ObjectNotFoundError } from "../lib/objectStorage";
+import { localStorage as localStore } from "../lib/localObjectStorage";
 import { requireAuth } from "../middlewares/authMiddleware";
 
 const router: IRouter = Router();
-const objectStorageService = new ObjectStorageService();
+
+const isReplit = !!process.env.REPL_ID;
+
+function getBaseUrl(req: Request): string {
+  const proto = req.headers["x-forwarded-proto"] || req.protocol;
+  const host = req.headers["x-forwarded-host"] || req.get("host") || "localhost";
+  const base = (process.env.BASE_PATH || "").replace(/\/$/, "");
+  return `${proto}://${host}${base}`;
+}
 
 router.post("/storage/uploads/request-url", requireAuth, async (req: Request, res: Response) => {
   const { name, size, contentType } = req.body ?? {};
@@ -14,9 +23,17 @@ router.post("/storage/uploads/request-url", requireAuth, async (req: Request, re
   }
 
   try {
+    if (!isReplit) {
+      const baseUrl = getBaseUrl(req);
+      const uploadURL = localStore.getObjectEntityUploadURL(baseUrl);
+      const objectPath = localStore.normalizeObjectEntityPath(uploadURL);
+      res.json({ uploadURL, objectPath, metadata: { name, size, contentType } });
+      return;
+    }
+
+    const objectStorageService = new ObjectStorageService();
     const uploadURL = await objectStorageService.getObjectEntityUploadURL();
     const objectPath = objectStorageService.normalizeObjectEntityPath(uploadURL);
-
     res.json({ uploadURL, objectPath, metadata: { name, size, contentType } });
   } catch (error) {
     req.log.error({ err: error }, "Error generating upload URL");
@@ -24,8 +41,43 @@ router.post("/storage/uploads/request-url", requireAuth, async (req: Request, re
   }
 });
 
-router.get("/storage/public-objects/*filePath", async (req: Request, res: Response) => {
+router.put("/storage/local-upload/:uuid", async (req: Request, res: Response) => {
+  const { uuid } = req.params;
+  const contentType = req.headers["content-type"] || "application/octet-stream";
   try {
+    await localStore.saveStream(uuid, req, contentType);
+    res.status(200).json({ ok: true });
+  } catch (error) {
+    req.log.error({ err: error }, "Error saving local upload");
+    res.status(500).json({ error: "Failed to save file" });
+  }
+});
+
+router.get("/storage/local-objects/:uuid", async (req: Request, res: Response) => {
+  const { uuid } = req.params;
+  try {
+    const file = await localStore.serveFile(uuid);
+    if (!file) {
+      res.status(404).json({ error: "File not found" });
+      return;
+    }
+    res.setHeader("Content-Type", file.contentType);
+    res.setHeader("Content-Length", file.size);
+    res.setHeader("Cache-Control", "public, max-age=31536000");
+    file.stream.pipe(res);
+  } catch (error) {
+    req.log.error({ err: error }, "Error serving local file");
+    res.status(500).json({ error: "Failed to serve file" });
+  }
+});
+
+router.get("/storage/public-objects/*filePath", async (req: Request, res: Response) => {
+  if (!isReplit) {
+    res.status(404).json({ error: "Not available in this environment" });
+    return;
+  }
+  try {
+    const objectStorageService = new ObjectStorageService();
     const raw = req.params.filePath;
     const filePath = Array.isArray(raw) ? raw.join("/") : raw;
     const file = await objectStorageService.searchPublicObject(filePath);
@@ -49,7 +101,28 @@ router.get("/storage/public-objects/*filePath", async (req: Request, res: Respon
 });
 
 router.get("/storage/objects/*path", async (req: Request, res: Response) => {
+  if (!isReplit) {
+    const raw = req.params.path;
+    const wildcardPath = Array.isArray(raw) ? raw.join("/") : raw;
+    const uuid = wildcardPath.split("/").pop() || wildcardPath;
+    try {
+      const file = await localStore.serveFile(uuid);
+      if (!file) {
+        res.status(404).json({ error: "File not found" });
+        return;
+      }
+      res.setHeader("Content-Type", file.contentType);
+      res.setHeader("Content-Length", file.size);
+      res.setHeader("Cache-Control", "public, max-age=31536000");
+      file.stream.pipe(res);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to serve file" });
+    }
+    return;
+  }
+
   try {
+    const objectStorageService = new ObjectStorageService();
     const raw = req.params.path;
     const wildcardPath = Array.isArray(raw) ? raw.join("/") : raw;
     const objectPath = `/objects/${wildcardPath}`;

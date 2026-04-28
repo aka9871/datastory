@@ -8,6 +8,7 @@ import {
 } from "react";
 import { setAuthTokenGetter } from "@workspace/api-client-react";
 import type { AuthUser } from "@workspace/api-client-react";
+import { apiUrl } from "@/lib/api-url";
 
 const TOKEN_KEY = "datastory_token";
 
@@ -39,7 +40,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return;
     }
 
-    fetch("/api/auth/me", {
+    fetch(apiUrl("/api/auth/me"), {
       headers: { Authorization: `Bearer ${token}` },
     })
       .then(async (res) => {
@@ -70,7 +71,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     localStorage.removeItem(TOKEN_KEY);
     setToken(null);
     setUser(null);
-    fetch("/api/auth/logout", { method: "POST" }).catch(() => {});
+    fetch(apiUrl("/api/auth/logout"), { method: "POST" }).catch(() => {});
   }, []);
 
   return (

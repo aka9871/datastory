@@ -4,12 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { ArrowLeft, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useListCompanies } from "@workspace/api-client-react";
-
-function getLogoSrc(logoUrl: string | null | undefined): string | null {
-  if (!logoUrl) return null;
-  if (logoUrl.startsWith("http")) return logoUrl;
-  return `/api/storage${logoUrl}`;
-}
+import { storageUrl } from "@/lib/api-url";
 
 export default function DashboardViewer() {
   const [, params] = useRoute("/dashboards/:id");
@@ -23,7 +18,7 @@ export default function DashboardViewer() {
 
   const { data: companies } = useListCompanies();
   const company = companies?.find((c) => c.id === dashboard?.companyId);
-  const logoSrc = getLogoSrc(company?.logoUrl);
+  const logoSrc = storageUrl(company?.logoUrl);
 
   if (isLoading) {
     return (

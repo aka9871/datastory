@@ -33,11 +33,7 @@ import { Plus, Trash2, Pencil, Loader2, LayoutDashboard, Upload, X } from "lucid
 import { useToast } from "@/hooks/use-toast";
 import { Link } from "wouter";
 
-function getLogoSrc(logoUrl: string | null | undefined): string | null {
-  if (!logoUrl) return null;
-  if (logoUrl.startsWith("http")) return logoUrl;
-  return `/api/storage${logoUrl}`;
-}
+import { storageUrl } from "@/lib/api-url";
 
 type FormState = {
   name: string;
@@ -56,8 +52,9 @@ const emptyForm: FormState = {
 };
 
 async function uploadLogo(file: File): Promise<string> {
+  const base = import.meta.env.BASE_URL.replace(/\/$/, "");
   const token = localStorage.getItem("datastory_token");
-  const urlRes = await fetch("/api/storage/uploads/request-url", {
+  const urlRes = await fetch(`${base}/api/storage/uploads/request-url`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -230,7 +227,7 @@ export default function AdminCompanies() {
       logoUrl: company.logoUrl ?? "",
     });
     setLogoFile(null);
-    setLogoPreview(getLogoSrc(company.logoUrl));
+    setLogoPreview(storageUrl(company.logoUrl));
     setEditingCompany(company);
   }
 
@@ -401,7 +398,7 @@ export default function AdminCompanies() {
                 </TableRow>
               ) : (
                 companies?.map((company) => {
-                  const logoSrc = getLogoSrc(company.logoUrl);
+                  const logoSrc = storageUrl(company.logoUrl);
                   return (
                     <TableRow key={company.id} className="border-border">
                       <TableCell>

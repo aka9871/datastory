@@ -3,12 +3,7 @@ import { useListDashboards, useListCompanies } from "@workspace/api-client-react
 import { Skeleton } from "@/components/ui/skeleton";
 import { Link } from "wouter";
 import { BarChart3, ArrowRight } from "lucide-react";
-
-function getLogoSrc(logoUrl: string | null | undefined): string | null {
-  if (!logoUrl) return null;
-  if (logoUrl.startsWith("http")) return logoUrl;
-  return `/api/storage${logoUrl}`;
-}
+import { storageUrl } from "@/lib/api-url";
 
 export default function Dashboards() {
   const { data: dashboards, isLoading: isLoadingDashboards } = useListDashboards();
@@ -47,7 +42,7 @@ export default function Dashboards() {
           <div className="divide-y divide-border border-y border-border">
             {activeDashboards.map((dashboard, idx) => {
               const company = companies?.find((c) => c.id === dashboard.companyId);
-              const logoSrc = getLogoSrc(company?.logoUrl);
+              const logoSrc = storageUrl(company?.logoUrl);
               return (
                 <Link key={dashboard.id} href={`/dashboards/${dashboard.id}`}>
                   <div className="group flex items-center gap-6 py-6 px-1 cursor-pointer hover:bg-card transition-colors relative">

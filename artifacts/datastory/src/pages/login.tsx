@@ -46,14 +46,20 @@ export default function Login() {
   return (
     <div className="min-h-[100dvh] flex items-center justify-center bg-background px-4">
       <div className="w-full max-w-[400px]">
-        <div className="mb-10 text-center flex flex-col items-center gap-2">
+        <div className="mb-10 text-center flex flex-col items-center gap-3">
           <span className="font-serif font-bold text-3xl tracking-tight">
             DATA<span className="text-primary">STORY</span>
           </span>
           <img src={bbdoLogo} alt="BBDO Paris" className="h-4 w-auto opacity-60" />
-          <p className="text-muted-foreground text-sm mt-2">
-            Connectez-vous à votre espace client
-          </p>
+          <div className="mt-3 space-y-1">
+            <p className="text-white text-sm font-medium">
+              Votre portail de pilotage marketing
+            </p>
+            <p className="text-muted-foreground text-xs leading-relaxed max-w-[300px]">
+              Accédez à vos tableaux de bord 360° et suivez la performance
+              de vos campagnes en temps réel, depuis un espace sécurisé dédié à votre marque.
+            </p>
+          </div>
         </div>
 
         <div className="border border-border bg-card p-8">

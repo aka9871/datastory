@@ -1,8 +1,27 @@
 import { Router, type IRouter, type Request, type Response } from "express";
 import { Readable } from "stream";
+import { randomUUID } from "crypto";
+import multer from "multer";
+import path from "path";
+import { existsSync, mkdirSync } from "fs";
 import { ObjectStorageService, ObjectNotFoundError } from "../lib/objectStorage";
 import { localStorage as localStore } from "../lib/localObjectStorage";
 import { requireAuth } from "../middlewares/authMiddleware";
+
+const UPLOADS_DIR = process.env.LOCAL_UPLOADS_DIR
+  ? path.resolve(process.env.LOCAL_UPLOADS_DIR)
+  : path.resolve(process.cwd(), "uploads");
+
+if (!existsSync(UPLOADS_DIR)) mkdirSync(UPLOADS_DIR, { recursive: true });
+
+const storage = multer.diskStorage({
+  destination: (_req, _file, cb) => cb(null, UPLOADS_DIR),
+  filename: (_req, _file, cb) => {
+    const ext = path.extname(_file.originalname).toLowerCase();
+    cb(null, `${randomUUID()}${ext}`);
+  },
+});
+const upload = multer({ storage, limits: { fileSize: 10 * 1024 * 1024 } });
 
 const router: IRouter = Router();
 
@@ -24,10 +43,9 @@ router.post("/storage/uploads/request-url", requireAuth, async (req: Request, re
 
   try {
     if (!isReplit) {
-      const basePath = process.env.BASE_PATH || "";
-      const uploadURL = localStore.getObjectEntityUploadURL(basePath);
-      const objectPath = localStore.normalizeObjectEntityPath(uploadURL);
-      res.json({ uploadURL, objectPath, uploadMethod: "POST", metadata: { name, size, contentType } });
+      const basePath = (process.env.BASE_PATH || "").replace(/\/$/, "");
+      const uploadURL = `${basePath}/api/storage/direct-upload`;
+      res.json({ uploadURL, directUpload: true, metadata: { name, size, contentType } });
       return;
     }
 
@@ -41,16 +59,13 @@ router.post("/storage/uploads/request-url", requireAuth, async (req: Request, re
   }
 });
 
-router.post("/storage/local-upload/:uuid", async (req: Request, res: Response) => {
-  const { uuid } = req.params;
-  const contentType = req.headers["content-type"] || "application/octet-stream";
-  try {
-    await localStore.saveStream(uuid, req, contentType);
-    res.status(200).json({ ok: true });
-  } catch (error) {
-    req.log.error({ err: error }, "Error saving local upload");
-    res.status(500).json({ error: "Failed to save file" });
+router.post("/storage/direct-upload", requireAuth, upload.single("file"), async (req: Request, res: Response) => {
+  if (!req.file) {
+    res.status(400).json({ error: "No file provided" });
+    return;
   }
+  const objectPath = `/objects/${req.file.filename}`;
+  res.json({ objectPath });
 });
 
 router.get("/storage/local-objects/:uuid", async (req: Request, res: Response) => {

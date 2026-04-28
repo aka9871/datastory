@@ -63,7 +63,21 @@ async function uploadLogo(file: File): Promise<string> {
     body: JSON.stringify({ name: file.name, size: file.size, contentType: file.type }),
   });
   if (!urlRes.ok) throw new Error("Impossible d'obtenir l'URL d'upload");
-  const { uploadURL, objectPath, uploadMethod = "PUT" } = await urlRes.json();
+  const { uploadURL, objectPath, uploadMethod = "PUT", directUpload = false } = await urlRes.json();
+
+  if (directUpload) {
+    const form = new FormData();
+    form.append("file", file);
+    const uploadRes = await fetch(uploadURL, {
+      method: "POST",
+      headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+      body: form,
+    });
+    if (!uploadRes.ok) throw new Error("Échec de l'upload du logo");
+    const { objectPath: path } = await uploadRes.json();
+    return path as string;
+  }
+
   const putRes = await fetch(uploadURL, {
     method: uploadMethod,
     body: file,
